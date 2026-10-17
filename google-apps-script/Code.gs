@@ -27,7 +27,9 @@ const CONFIG = {
   PRICING: {
     INTEIRA_CENTS: 15000,
     MEIA_CENTS: 7500,
-    INFANTIL_CENTS: 0
+    INFANTIL_CENTS: 0,
+    DIARIA_INTEIRA_CENTS: 6000,
+    DIARIA_MEIA_CENTS: 3000
   }
 };
 
@@ -230,6 +232,8 @@ function doPost(e) {
         return createJsonResponse(false, "Data de nascimento de todos os participantes é obrigatória.", null, 400);
       }
 
+      const isDiaria = p.modalidade === "diaria";
+      const numDias = (p.diasDiaria === 2) ? 2 : 1;
       const idadeCalculada = calculateAge(pDataNasc, now);
       let categoria = "Ingresso inteiro";
       let valorUnitarioCents = CONFIG.PRICING.INTEIRA_CENTS;
@@ -243,8 +247,13 @@ function doPost(e) {
         statusPagamentoIndividual = "Isento";
         countInfantil++;
       } else if (idadeCalculada <= 11) {
-        categoria = "Meia-entrada";
-        valorUnitarioCents = CONFIG.PRICING.MEIA_CENTS;
+        if (isDiaria) {
+          categoria = `Meia-entrada (${numDias} diária${numDias > 1 ? "s" : ""})`;
+          valorUnitarioCents = CONFIG.PRICING.DIARIA_MEIA_CENTS * numDias;
+        } else {
+          categoria = "Meia-entrada (Retiro Completo)";
+          valorUnitarioCents = CONFIG.PRICING.MEIA_CENTS;
+        }
         countMeia++;
         if (pPcdSolicitada) {
           statusIsencao = "Pendente de validação";
@@ -254,8 +263,13 @@ function doPost(e) {
           totalCents += valorUnitarioCents;
         }
       } else {
-        categoria = "Ingresso inteiro";
-        valorUnitarioCents = CONFIG.PRICING.INTEIRA_CENTS;
+        if (isDiaria) {
+          categoria = `Ingresso inteiro (${numDias} diária${numDias > 1 ? "s" : ""})`;
+          valorUnitarioCents = CONFIG.PRICING.DIARIA_INTEIRA_CENTS * numDias;
+        } else {
+          categoria = "Ingresso inteiro (Retiro Completo)";
+          valorUnitarioCents = CONFIG.PRICING.INTEIRA_CENTS;
+        }
         countInteira++;
         if (pPcdSolicitada) {
           statusIsencao = "Pendente de validação";

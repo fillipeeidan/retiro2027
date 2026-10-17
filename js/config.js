@@ -31,7 +31,8 @@ const RETIRO_CONFIG = {
       label: "Ingresso inteiro",
       minAge: 12,
       maxAge: 150,
-      priceInCents: 15000, // R$ 150,00
+      priceInCents: 15000, // R$ 150,00 completo
+      dailyPriceInCents: 6000, // R$ 60,00 por diária
       displayPrice: "R$ 150,00",
       description: "Para participantes com 12 anos ou mais na data da inscrição.",
     },
@@ -40,7 +41,8 @@ const RETIRO_CONFIG = {
       label: "Meia-entrada",
       minAge: 7,
       maxAge: 11,
-      priceInCents: 7500, // R$ 75,00
+      priceInCents: 7500, // R$ 75,00 completo
+      dailyPriceInCents: 3000, // R$ 30,00 por diária
       displayPrice: "R$ 75,00",
       description: "Para crianças de 7 a 11 anos na data da inscrição.",
     },
@@ -50,6 +52,7 @@ const RETIRO_CONFIG = {
       minAge: 0,
       maxAge: 6,
       priceInCents: 0, // Gratuito
+      dailyPriceInCents: 0, // Gratuito
       displayPrice: "Gratuito",
       description: "Para crianças de 0 a 6 anos na data da inscrição.",
     },
@@ -57,9 +60,17 @@ const RETIRO_CONFIG = {
       id: "pcd",
       label: "Isenção por deficiência",
       priceInCents: 0, // Pendente de validação, não entra no total a pagar inicial
+      dailyPriceInCents: 0,
       displayPrice: "Sob validação manual",
       description: "Pessoas com deficiência podem solicitar isenção integral, independentemente da idade. Sujeito à validação manual da equipe.",
     }
+  },
+
+  // Valores de Diárias Avulsas
+  diaria: {
+    inteiraCents: 6000, // R$ 60,00
+    meiaCents: 3000,    // R$ 30,00
+    infantilCents: 0,
   },
 
   // Contatos Oficiais

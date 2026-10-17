@@ -556,6 +556,25 @@ img {
   color: var(--color-forest-deep);
 }
 
+.price-sub {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.pricing-diaria-chip {
+  display: inline-block;
+  background-color: #e2ede5;
+  color: var(--color-forest-deep);
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+
 .pricing-card-desc {
   font-size: 0.92rem;
   color: var(--color-text-muted);
@@ -936,6 +955,111 @@ img {
   color: var(--color-text-muted);
   font-style: italic;
   font-size: 0.88rem;
+}
+
+/* Modalidade de Inscrição (Completo vs Diária) */
+.participant-modalidade-wrap {
+  margin: 14px 0 16px 0;
+  padding: 14px 16px;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.modalidade-title {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--color-text-dark);
+  margin-bottom: 8px;
+}
+
+.modalidade-radios-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.modalidade-card-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: var(--color-bg-light);
+  font-size: 0.90rem;
+  font-weight: 500;
+  color: var(--color-text-dark);
+  user-select: none;
+}
+
+.modalidade-card-label:hover {
+  border-color: var(--color-forest-deep);
+}
+
+.modalidade-card-label.selected,
+.modalidade-card-label:has(input[type="radio"]:checked) {
+  border-color: var(--color-forest-deep);
+  background-color: var(--color-surface-soft);
+  font-weight: 600;
+}
+
+.modalidade-card-label input[type="radio"] {
+  accent-color: var(--color-forest-deep);
+  width: 17px;
+  height: 17px;
+}
+
+.diaria-days-box {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.diaria-days-title {
+  display: block;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--color-forest-deep);
+  margin-bottom: 8px;
+}
+
+.diaria-days-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-diaria-day {
+  background-color: var(--color-white);
+  border: 1.5px solid var(--color-border);
+  color: var(--color-text-dark);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-diaria-day:hover {
+  border-color: var(--color-forest-deep);
+}
+
+.btn-diaria-day.active {
+  background-color: var(--color-forest-deep);
+  color: var(--color-white);
+  border-color: var(--color-forest-deep);
+}
+
+.diaria-tip-note {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin-top: 6px;
 }
 
 /* Checkbox estilizado */
@@ -2233,6 +2357,11 @@ img {
   .form-grid-2 {
     grid-template-columns: 1fr;
     gap: 0;
+  }
+
+  .modalidade-radios-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .cat-review-details {

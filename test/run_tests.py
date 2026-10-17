@@ -67,6 +67,8 @@ def test_config_data():
     assert_true("5595991378350" in content, "WhatsApp Ir. Fillipe (5595991378350) configurado")
     assert_true("15000" in content, "Ingresso inteiro configurado como 15000 centavos (R$ 150,00)")
     assert_true("7500" in content, "Meia-entrada configurada como 7500 centavos (R$ 75,00)")
+    assert_true("6000" in content, "Diária inteira configurada como 6000 centavos (R$ 60,00)")
+    assert_true("3000" in content, "Diária meia configurada como 3000 centavos (R$ 30,00)")
     assert_true("America/Boa_Vista" in content, "Fuso horário oficial America/Boa_Vista configurado")
     assert_true("2027-01-30T23:59:59-04:00" in content, "Data limite de inscrições 30 de janeiro de 2027 às 23:59:59-04:00 configurada")
 
@@ -170,6 +172,37 @@ def test_business_logic_rules():
     assert_true(total_payable_cents == 22500, "Total a pagar do pedido misto é exatamente 22500 centavos (R$ 225,00)")
     assert_true(total_payable_cents == 15000 + 7500 + 0 + 0, "PcD pendente não bloqueia nem adiciona valor indevido aos demais participantes")
 
+    # Testes de Diárias Avulsas (R$ 60,00 inteira / R$ 30,00 meia por dia)
+    def evaluate_diaria(birth_date_str, num_dias, is_pcd, ref_date):
+        age = simulate_age(birth_date_str, ref_date)
+        if age <= 6:
+            return {"age": age, "category": "infantil", "payable_cents": 0}
+        elif age <= 11:
+            return {"age": age, "category": "meia_diaria", "payable_cents": 0 if is_pcd else (3000 * num_dias)}
+        else:
+            return {"age": age, "category": "inteira_diaria", "payable_cents": 0 if is_pcd else (6000 * num_dias)}
+
+    # Teste 6: Adulto com 1 diária (R$ 60,00)
+    adult_1d = evaluate_diaria("2001-08-20", 1, False, ref)
+    assert_true(adult_1d["payable_cents"] == 6000, "Adulto com 1 diária custa exatamente 6000 centavos (R$ 60,00)")
+
+    # Teste 7: Adulto com 2 diárias (R$ 120,00)
+    adult_2d = evaluate_diaria("2001-08-20", 2, False, ref)
+    assert_true(adult_2d["payable_cents"] == 12000, "Adulto com 2 diárias custa exatamente 12000 centavos (R$ 120,00)")
+
+    # Teste 8: Criança (8 anos) com 1 diária (R$ 30,00)
+    kid_1d = evaluate_diaria("2018-02-10", 1, False, ref)
+    assert_true(kid_1d["payable_cents"] == 3000, "Criança (8 anos) com 1 diária custa exatamente 3000 centavos (R$ 30,00)")
+
+    # Teste 9: Criança (8 anos) com 2 diárias (R$ 60,00)
+    kid_2d = evaluate_diaria("2018-02-10", 2, False, ref)
+    assert_true(kid_2d["payable_cents"] == 6000, "Criança (8 anos) com 2 diárias custa exatamente 6000 centavos (R$ 60,00)")
+
+    # Teste 10: Pedido combinado (1 Adulto Retiro Completo + 1 Adulto 1 Diária + 1 Criança 1 Diária)
+    # R$ 150 + R$ 60 + R$ 30 = R$ 240,00 (24000 centavos)
+    combo_total = adult["payable_cents"] + adult_1d["payable_cents"] + kid_1d["payable_cents"]
+    assert_true(combo_total == 24000, "Pedido combinado com diárias calcula total exato de 24000 centavos (R$ 240,00)")
+
 def test_whatsapp_messages():
     print("\n--- TESTE 5: Mensagens Pré-formatadas do WhatsApp ---")
     
@@ -235,6 +268,8 @@ def test_google_apps_script_integrity():
     assert_true("Aguardando pagamento" in code, "Status inicial do pagamento Aguardando pagamento implementado")
     assert_true("Vagas no ônibus da igreja" in code, "Coluna Vagas no ônibus da igreja presente em Code.gs")
     assert_true("Opção de transporte" in code, "Coluna Opção de transporte presente em Code.gs")
+    assert_true("DIARIA_INTEIRA_CENTS" in code, "Constante DIARIA_INTEIRA_CENTS presente em Code.gs")
+    assert_true("DIARIA_MEIA_CENTS" in code, "Constante DIARIA_MEIA_CENTS presente em Code.gs")
 
 def test_transport_and_wizard_rules():
     print("\n--- TESTE 8: Regras de Transporte de Ônibus e Wizard de 4 Etapas ---")
@@ -246,6 +281,8 @@ def test_transport_and_wizard_rules():
     assert_true("transporteOnibus: false" in js, "Default do transporte inicia desmarcado (false)")
     assert_true("onibusCount" in js and "proprioCount" in js, "Cálculo de contagem de ônibus e transporte próprio implementado")
     assert_true("part-transporte-input" in js, "Checkbox de transporte de cada participante implementado")
+    assert_true("part-modalidade-radio" in js, "Radios de modalidade presentes em form.js")
+    assert_true("btn-diaria-day" in js, "Botões de seleção de dias da diária presentes em form.js")
     assert_true("step3-review-container" in js, "Etapa 3 é a Revisão do Pedido")
     assert_true("step4-total-display" in js, "Etapa 4 é a Forma de Pagamento")
 

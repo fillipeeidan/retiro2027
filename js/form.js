@@ -18,6 +18,8 @@ const RegistrationForm = (() => {
         id: "p_1",
         nome: "",
         dataNascimento: "",
+        modalidade: "completo", // 'completo' ou 'diaria'
+        diasDiaria: 1, // 1 ou 2
         transporteOnibus: false,
         solicitaIsencaoPcd: false,
         isAutoFilledFromResp: true,
@@ -182,9 +184,16 @@ const RegistrationForm = (() => {
     const parsed = parseBirthDate(rawDate);
     const hasBirthDate = parsed !== null;
     const age = hasBirthDate ? calculateAge(rawDate) : null;
+    const isDiaria = p.modalidade === "diaria";
+    const numDias = (p.diasDiaria === 2) ? 2 : 1;
+
     let categoryKey = "inteira";
-    let basePriceCents = RETIRO_CONFIG.pricing.inteira.priceInCents;
-    let label = RETIRO_CONFIG.pricing.inteira.label;
+    let basePriceCents = isDiaria
+      ? (RETIRO_CONFIG.diaria.inteiraCents * numDias)
+      : RETIRO_CONFIG.pricing.inteira.priceInCents;
+    let label = isDiaria
+      ? `Ingresso inteiro · ${numDias} Diária${numDias > 1 ? "s" : ""}`
+      : "Ingresso inteiro (Retiro Completo)";
     let isChild = false;
     let isHalf = false;
 
@@ -196,13 +205,21 @@ const RegistrationForm = (() => {
         isChild = true;
       } else if (age <= 11) {
         categoryKey = "meia";
-        basePriceCents = RETIRO_CONFIG.pricing.meia.priceInCents;
-        label = RETIRO_CONFIG.pricing.meia.label;
+        basePriceCents = isDiaria
+          ? (RETIRO_CONFIG.diaria.meiaCents * numDias)
+          : RETIRO_CONFIG.pricing.meia.priceInCents;
+        label = isDiaria
+          ? `Meia-entrada · ${numDias} Diária${numDias > 1 ? "s" : ""}`
+          : "Meia-entrada (Retiro Completo)";
         isHalf = true;
       } else {
         categoryKey = "inteira";
-        basePriceCents = RETIRO_CONFIG.pricing.inteira.priceInCents;
-        label = RETIRO_CONFIG.pricing.inteira.label;
+        basePriceCents = isDiaria
+          ? (RETIRO_CONFIG.diaria.inteiraCents * numDias)
+          : RETIRO_CONFIG.pricing.inteira.priceInCents;
+        label = isDiaria
+          ? `Ingresso inteiro · ${numDias} Diária${numDias > 1 ? "s" : ""}`
+          : "Ingresso inteiro (Retiro Completo)";
       }
     }
 
@@ -227,6 +244,8 @@ const RegistrationForm = (() => {
       currentPayableCents,
       isChild,
       isHalf,
+      isDiaria,
+      numDias,
       isPcdRequested,
       exemptionStatus,
     };
@@ -237,12 +256,22 @@ const RegistrationForm = (() => {
    */
   function calculateSummary() {
     let inteiraCount = 0;
+    let inteiraCompletoCount = 0;
+    let inteiraDiariaCount = 0;
+    let inteiraDiariaTotalDias = 0;
+
     let meiaCount = 0;
+    let meiaCompletoCount = 0;
+    let meiaDiariaCount = 0;
+    let meiaDiariaTotalDias = 0;
+
     let infantilCount = 0;
     let pcdPendenteCount = 0;
     let onibusCount = 0;
     let proprioCount = 0;
     let totalCents = 0;
+    let inteiraTotalCents = 0;
+    let meiaTotalCents = 0;
 
     const evaluatedParticipants = state.participantes.map(p => {
       const evaluation = evaluateParticipant(p);
@@ -260,14 +289,30 @@ const RegistrationForm = (() => {
         infantilCount++;
       } else if (evaluation.isHalf) {
         meiaCount++;
+        if (p.modalidade === "diaria") {
+          meiaDiariaCount++;
+          meiaDiariaTotalDias += (p.diasDiaria === 2 ? 2 : 1);
+        } else {
+          meiaCompletoCount++;
+        }
+        meiaTotalCents += evaluation.currentPayableCents;
         totalCents += evaluation.currentPayableCents;
       } else {
         inteiraCount++;
+        if (p.modalidade === "diaria") {
+          inteiraDiariaCount++;
+          inteiraDiariaTotalDias += (p.diasDiaria === 2 ? 2 : 1);
+        } else {
+          inteiraCompletoCount++;
+        }
+        inteiraTotalCents += evaluation.currentPayableCents;
         totalCents += evaluation.currentPayableCents;
       }
 
       return {
         ...p,
+        modalidade: p.modalidade === "diaria" ? "diaria" : "completo",
+        diasDiaria: (p.diasDiaria === 2) ? 2 : 1,
         transporteOnibus: vaiDeOnibus,
         transporteTexto: vaiDeOnibus ? "Ônibus da igreja" : "Transporte próprio",
         evaluation
@@ -277,14 +322,20 @@ const RegistrationForm = (() => {
     return {
       evaluatedParticipants,
       inteiraCount,
+      inteiraCompletoCount,
+      inteiraDiariaCount,
+      inteiraDiariaTotalDias,
       meiaCount,
+      meiaCompletoCount,
+      meiaDiariaCount,
+      meiaDiariaTotalDias,
       infantilCount,
       pcdPendenteCount,
       onibusCount,
       proprioCount,
       totalParticipants: state.participantes.length,
-      inteiraTotalCents: inteiraCount * RETIRO_CONFIG.pricing.inteira.priceInCents,
-      meiaTotalCents: meiaCount * RETIRO_CONFIG.pricing.meia.priceInCents,
+      inteiraTotalCents,
+      meiaTotalCents,
       totalCents,
       totalFormatted: formatMoney(totalCents)
     };
@@ -315,7 +366,10 @@ const RegistrationForm = (() => {
         if (Array.isArray(parsed.participantes) && parsed.participantes.length > 0) {
           state.participantes = parsed.participantes.map(p => ({
             ...p,
-            transporteOnibus: Boolean(p.transporteOnibus)
+            modalidade: p.modalidade === "diaria" ? "diaria" : "completo",
+            diasDiaria: (p.diasDiaria === 2) ? 2 : 1,
+            transporteOnibus: Boolean(p.transporteOnibus),
+            solicitaIsencaoPcd: Boolean(p.solicitaIsencaoPcd)
           }));
           if (state.participantes[0] && state.participantes[0].isAutoFilledFromResp === undefined) {
             state.participantes[0].isAutoFilledFromResp = (
@@ -518,6 +572,8 @@ const RegistrationForm = (() => {
       id: newId,
       nome: "",
       dataNascimento: "",
+      modalidade: "completo",
+      diasDiaria: 1,
       transporteOnibus: false,
       solicitaIsencaoPcd: false,
     });
@@ -641,13 +697,60 @@ const RegistrationForm = (() => {
           </div>
         </div>
 
+        <!-- Modalidade de Inscrição: Completo ou Diária -->
+        <div class="participant-modalidade-wrap">
+          <label class="modalidade-title">Período de Participação:</label>
+          <div class="modalidade-radios-grid">
+            <label class="modalidade-card-label ${p.modalidade !== 'diaria' ? 'selected' : ''}" for="modalidade-comp-${p.id}">
+              <input type="radio" 
+                     id="modalidade-comp-${p.id}" 
+                     name="modalidade-${p.id}" 
+                     value="completo" 
+                     class="part-modalidade-radio"
+                     data-id="${p.id}" 
+                     ${p.modalidade !== 'diaria' ? 'checked' : ''} />
+              <span>Retiro Completo <small style="display:block; font-size:0.78rem; opacity:0.8; font-weight:normal;">Todos os dias (6 a 9 de fev)</small></span>
+            </label>
+            <label class="modalidade-card-label ${p.modalidade === 'diaria' ? 'selected' : ''}" for="modalidade-diaria-${p.id}">
+              <input type="radio" 
+                     id="modalidade-diaria-${p.id}" 
+                     name="modalidade-${p.id}" 
+                     value="diaria" 
+                     class="part-modalidade-radio"
+                     data-id="${p.id}" 
+                     ${p.modalidade === 'diaria' ? 'checked' : ''} />
+              <span>Diária Avulsa <small style="display:block; font-size:0.78rem; opacity:0.8; font-weight:normal;">R$ 60/dia (meia R$ 30/dia)</small></span>
+            </label>
+          </div>
+
+          <!-- Seletor de Quantidade de Diárias -->
+          <div class="diaria-days-box" id="diaria-days-box-${p.id}" style="${p.modalidade === 'diaria' ? 'display: block;' : 'display: none;'}">
+            <span class="diaria-days-title">Quantas diárias esse participante irá comparecer?</span>
+            <div class="diaria-days-buttons">
+              <button type="button" 
+                      class="btn-diaria-day ${(!p.diasDiaria || p.diasDiaria === 1) ? 'active' : ''}" 
+                      data-id="${p.id}" 
+                      data-days="1">
+                1 Diária
+              </button>
+              <button type="button" 
+                      class="btn-diaria-day ${p.diasDiaria === 2 ? 'active' : ''}" 
+                      data-id="${p.id}" 
+                      data-days="2">
+                2 Diárias
+              </button>
+            </div>
+            <span class="diaria-tip-note">💡 Participação em 3 ou mais dias? O <strong>Retiro Completo</strong> é mais econômico e inclui todas as atividades.</span>
+          </div>
+        </div>
+
         <div class="participant-preview-pill" id="preview-pill-${p.id}">
           ${evaluation.hasBirthDate ? `
             <span class="pill-age">Idade: <strong>${evaluation.age} ano(s)</strong></span>
             <span class="pill-category">Categoria: <strong>${evaluation.categoryLabel}</strong></span>
             <span class="pill-price">Valor: <strong>${p.solicitaIsencaoPcd ? "Sob validação manual" : (isAutoChild ? "Gratuito" : formatMoney(evaluation.currentPayableCents))}</strong></span>
           ` : `
-            <span class="pill-hint">Digite a data de nascimento (DD/MM/AAAA) para calcular a categoria e o valor do ingresso.</span>
+            <span class="pill-hint">${p.modalidade === 'diaria' ? 'Diária selecionada. Digite a data de nascimento (DD/MM/AAAA) para calcular a categoria e valor.' : 'Digite a data de nascimento (DD/MM/AAAA) para calcular a categoria e o valor do ingresso.'}</span>
           `}
         </div>
 
@@ -692,12 +795,102 @@ const RegistrationForm = (() => {
     attachParticipantCardEvents();
   }
 
+  function updateParticipantPill(id) {
+    const participant = state.participantes.find(p => p.id === id);
+    if (!participant) return;
+    const pill = document.getElementById(`preview-pill-${id}`);
+    if (!pill) return;
+
+    const rawDate = participant.dataNascimento ? String(participant.dataNascimento).trim() : "";
+    const masked = maskDate(rawDate);
+    const digits = masked.replace(/\D/g, "");
+
+    if (digits.length === 8) {
+      const parsed = parseBirthDate(masked);
+      if (parsed) {
+        const evalP = evaluateParticipant(participant);
+        pill.innerHTML = `
+          <span class="pill-age">Idade: <strong>${evalP.age} ano(s)</strong></span>
+          <span class="pill-category">Categoria: <strong>${evalP.categoryLabel}</strong></span>
+          <span class="pill-price">Valor: <strong>${participant.solicitaIsencaoPcd ? "Sob validação manual" : (evalP.isChild ? "Gratuito" : formatMoney(evalP.currentPayableCents))}</strong></span>
+        `;
+      } else {
+        pill.innerHTML = `<span class="pill-hint" style="color: #e05252;">Data de nascimento inválida.</span>`;
+      }
+    } else {
+      if (participant.modalidade === "diaria") {
+        const numDias = participant.diasDiaria === 2 ? 2 : 1;
+        pill.innerHTML = `<span class="pill-hint">Diária selecionada (${numDias} dia${numDias > 1 ? "s" : ""}). Digite a data de nascimento (DD/MM/AAAA) para calcular a categoria e valor.</span>`;
+      } else {
+        pill.innerHTML = `<span class="pill-hint">Digite a data de nascimento (DD/MM/AAAA) para calcular a categoria e o valor do ingresso.</span>`;
+      }
+    }
+  }
+
   function attachParticipantCardEvents() {
     // Remover participante
     document.querySelectorAll(".btn-remove-participant").forEach(btn => {
       btn.onclick = (e) => {
         const id = btn.getAttribute("data-id");
         removeParticipant(id);
+      };
+    });
+
+    // Modalidade: Completo vs Diária
+    document.querySelectorAll(".part-modalidade-radio").forEach(radio => {
+      radio.onchange = (e) => {
+        const id = radio.getAttribute("data-id");
+        const participant = state.participantes.find(p => p.id === id);
+        if (!participant) return;
+
+        participant.modalidade = radio.value;
+        if (!participant.diasDiaria) participant.diasDiaria = 1;
+
+        const card = document.getElementById(`card-${id}`);
+        if (card) {
+          card.querySelectorAll(".modalidade-card-label").forEach(lbl => {
+            const r = lbl.querySelector("input[type='radio']");
+            if (r && r.checked) {
+              lbl.classList.add("selected");
+            } else {
+              lbl.classList.remove("selected");
+            }
+          });
+        }
+
+        const daysBox = document.getElementById(`diaria-days-box-${id}`);
+        if (daysBox) {
+          daysBox.style.display = (participant.modalidade === "diaria") ? "block" : "none";
+        }
+
+        saveDraft();
+        updateParticipantPill(id);
+      };
+    });
+
+    // Botões de Quantidade de Diárias (1 ou 2)
+    document.querySelectorAll(".btn-diaria-day").forEach(btn => {
+      btn.onclick = (e) => {
+        const id = btn.getAttribute("data-id");
+        const days = parseInt(btn.getAttribute("data-days"), 10) || 1;
+        const participant = state.participantes.find(p => p.id === id);
+        if (!participant) return;
+
+        participant.diasDiaria = days;
+
+        const daysBox = document.getElementById(`diaria-days-box-${id}`);
+        if (daysBox) {
+          daysBox.querySelectorAll(".btn-diaria-day").forEach(b => {
+            if (parseInt(b.getAttribute("data-days"), 10) === days) {
+              b.classList.add("active");
+            } else {
+              b.classList.remove("active");
+            }
+          });
+        }
+
+        saveDraft();
+        updateParticipantPill(id);
       };
     });
 
@@ -716,7 +909,6 @@ const RegistrationForm = (() => {
         participant.dataNascimento = masked;
         saveDraft();
 
-        const pill = document.getElementById(`preview-pill-${id}`);
         const errorEl = document.getElementById(`part-nasc-error-${id}`);
         const digits = masked.replace(/\D/g, "");
 
@@ -727,21 +919,10 @@ const RegistrationForm = (() => {
               errorEl.textContent = "";
               errorEl.style.display = "none";
             }
-            const evalP = evaluateParticipant(participant);
-            if (pill) {
-              pill.innerHTML = `
-                <span class="pill-age">Idade: <strong>${evalP.age} ano(s)</strong></span>
-                <span class="pill-category">Categoria: <strong>${evalP.categoryLabel}</strong></span>
-                <span class="pill-price">Valor: <strong>${participant.solicitaIsencaoPcd ? "Sob validação manual" : (evalP.isChild ? "Gratuito" : formatMoney(evalP.currentPayableCents))}</strong></span>
-              `;
-            }
           } else {
             if (errorEl) {
               errorEl.textContent = "Data inválida. Verifique o dia, mês e ano.";
               errorEl.style.display = "block";
-            }
-            if (pill) {
-              pill.innerHTML = `<span class="pill-hint" style="color: #e05252;">Data de nascimento inválida.</span>`;
             }
           }
         } else {
@@ -749,10 +930,8 @@ const RegistrationForm = (() => {
             errorEl.textContent = "";
             errorEl.style.display = "none";
           }
-          if (pill) {
-            pill.innerHTML = `<span class="pill-hint">Digite a data de nascimento (DD/MM/AAAA) para calcular a categoria e o valor do ingresso.</span>`;
-          }
         }
+        updateParticipantPill(id);
       };
 
       input.oninput = updateDateAndPill;
@@ -813,22 +992,7 @@ const RegistrationForm = (() => {
             notice.style.display = input.checked ? "block" : "none";
           }
           saveDraft();
-          // Atualiza pill
-          const evalP = evaluateParticipant(participant);
-          const pill = document.getElementById(`preview-pill-${id}`);
-          if (pill) {
-            if (evalP.hasBirthDate) {
-              pill.innerHTML = `
-                <span class="pill-age">Idade: <strong>${evalP.age} ano(s)</strong></span>
-                <span class="pill-category">Categoria: <strong>${evalP.categoryLabel}</strong></span>
-                <span class="pill-price">Valor: <strong>${participant.solicitaIsencaoPcd ? "Sob validação manual" : (evalP.isChild ? "Gratuito" : formatMoney(evalP.currentPayableCents))}</strong></span>
-              `;
-            } else {
-              pill.innerHTML = `
-                <span class="pill-hint">Preencha a data de nascimento para calcular a categoria e o valor do ingresso.</span>
-              `;
-            }
-          }
+          updateParticipantPill(id);
         }
       };
     });
@@ -917,20 +1081,47 @@ const RegistrationForm = (() => {
       <div class="financial-summary-card">
         <h4 class="financial-title">Resumo Financeiro da Inscrição</h4>
         
-        <div class="fin-row">
-          <span>Ingresso inteiro:</span>
-          <span>${summary.inteiraCount} × R$ 150,00 = <strong>${formatMoney(summary.inteiraTotalCents)}</strong></span>
-        </div>
+        ${summary.inteiraCompletoCount > 0 ? `
+          <div class="fin-row">
+            <span>Ingresso inteiro (Retiro Completo):</span>
+            <span>${summary.inteiraCompletoCount} × R$ 150,00 = <strong>${formatMoney(summary.inteiraCompletoCount * RETIRO_CONFIG.pricing.inteira.priceInCents)}</strong></span>
+          </div>
+        ` : ""}
 
-        <div class="fin-row">
-          <span>Meia-entrada:</span>
-          <span>${summary.meiaCount} × R$ 75,00 = <strong>${formatMoney(summary.meiaTotalCents)}</strong></span>
-        </div>
+        ${summary.inteiraDiariaCount > 0 ? `
+          <div class="fin-row">
+            <span>Ingresso inteiro (Diária avulsa):</span>
+            <span>${summary.inteiraDiariaTotalDias} diária(s) × R$ 60,00 = <strong>${formatMoney(summary.inteiraDiariaTotalDias * RETIRO_CONFIG.diaria.inteiraCents)}</strong></span>
+          </div>
+        ` : ""}
 
-        <div class="fin-row">
-          <span>Isenção infantil:</span>
-          <span>${summary.infantilCount} × R$ 0,00 = <strong>R$ 0,00</strong></span>
-        </div>
+        ${summary.meiaCompletoCount > 0 ? `
+          <div class="fin-row">
+            <span>Meia-entrada (Retiro Completo):</span>
+            <span>${summary.meiaCompletoCount} × R$ 75,00 = <strong>${formatMoney(summary.meiaCompletoCount * RETIRO_CONFIG.pricing.meia.priceInCents)}</strong></span>
+          </div>
+        ` : ""}
+
+        ${summary.meiaDiariaCount > 0 ? `
+          <div class="fin-row">
+            <span>Meia-entrada (Diária avulsa):</span>
+            <span>${summary.meiaDiariaTotalDias} diária(s) × R$ 30,00 = <strong>${formatMoney(summary.meiaDiariaTotalDias * RETIRO_CONFIG.diaria.meiaCents)}</strong></span>
+          </div>
+        ` : ""}
+
+        ${summary.infantilCount > 0 ? `
+          <div class="fin-row">
+            <span>Isenção infantil:</span>
+            <span>${summary.infantilCount} × R$ 0,00 = <strong>R$ 0,00</strong></span>
+          </div>
+        ` : ""}
+
+        ${(summary.inteiraCount === 0 && summary.meiaCount === 0 && summary.infantilCount === 0) ? `
+          <div class="fin-row">
+            <span>Inscrição:</span>
+            <span>0 participante(s) com valor calculado</span>
+          </div>
+        ` : ""}
 
         ${summary.pcdPendenteCount > 0 ? `
           <div class="fin-row fin-row-pending">
@@ -1033,6 +1224,8 @@ const RegistrationForm = (() => {
         nome: p.nome.trim(),
         dataNascimento: maskDate(p.dataNascimento),
         idade: p.evaluation.age,
+        modalidade: p.modalidade || "completo",
+        diasDiaria: (p.modalidade === "diaria") ? (p.diasDiaria === 2 ? 2 : 1) : null,
         categoria: p.evaluation.categoryLabel,
         valorCents: p.evaluation.isPcdRequested ? 0 : p.evaluation.currentPayableCents,
         solicitaIsencaoPcd: p.evaluation.isPcdRequested,
@@ -1043,7 +1236,13 @@ const RegistrationForm = (() => {
       resumo: {
         totalParticipantes: summary.totalParticipants,
         inteiraCount: summary.inteiraCount,
+        inteiraCompletoCount: summary.inteiraCompletoCount,
+        inteiraDiariaCount: summary.inteiraDiariaCount,
+        inteiraDiariaTotalDias: summary.inteiraDiariaTotalDias,
         meiaCount: summary.meiaCount,
+        meiaCompletoCount: summary.meiaCompletoCount,
+        meiaDiariaCount: summary.meiaDiariaCount,
+        meiaDiariaTotalDias: summary.meiaDiariaTotalDias,
         infantilCount: summary.infantilCount,
         pcdPendenteCount: summary.pcdPendenteCount,
         onibusCount: summary.onibusCount,
@@ -1448,7 +1647,16 @@ const RegistrationForm = (() => {
   function resetFormToNew() {
     state.currentStep = 1;
     state.responsavel = { nome: "", whatsapp: "" };
-    state.participantes = [{ id: "p_1", nome: "", dataNascimento: "", transporteOnibus: false, solicitaIsencaoPcd: false, isAutoFilledFromResp: true }];
+    state.participantes = [{ 
+      id: "p_1", 
+      nome: "", 
+      dataNascimento: "", 
+      modalidade: "completo", 
+      diasDiaria: 1, 
+      transporteOnibus: false, 
+      solicitaIsencaoPcd: false, 
+      isAutoFilledFromResp: true 
+    }];
     state.formaPagamento = "pix";
     state.lastOrder = null;
 
