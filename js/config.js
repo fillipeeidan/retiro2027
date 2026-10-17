@@ -64,6 +64,12 @@ const RETIRO_CONFIG = {
 
   // Contatos Oficiais
   contacts: {
+    diaconisaFranciele: {
+      name: "Diaconisa Franciele",
+      role: "Atendimento e Dúvidas",
+      phone: "+55 95 99113-3301",
+      phoneRaw: "5595991133301",
+    },
     diaconoJunior: {
       name: "Diácono Junior",
       role: "Responsável Financeiro (Pix e Dúvidas)",

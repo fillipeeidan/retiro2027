@@ -1816,19 +1816,28 @@ img {
   margin-bottom: 32px;
 }
 
+.contact-buttons-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .btn-contact-whatsapp {
   background-color: var(--color-forest-deep);
   color: var(--color-white);
   font-family: var(--font-bridge);
-  font-size: 1.3rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 14px 38px;
+  padding: 14px 28px;
   border-radius: var(--radius-md);
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  gap: 10px;
   box-shadow: var(--shadow-md);
   transition: all 0.25s ease;
 }
@@ -2264,6 +2273,21 @@ img {
   .btn-form-prev, .btn-form-next, .btn-form-submit {
     width: 100%;
     justify-content: center;
+  }
+
+  .contact-buttons-wrap {
+    flex-direction: column;
+    width: 100%;
+    gap: 12px;
+  }
+
+  .contact-buttons-wrap .btn-contact-whatsapp {
+    width: 100%;
+    justify-content: center;
+    padding: 14px 18px;
+    font-size: 1.05rem;
+    text-align: center;
+    white-space: normal;
   }
 
   .footer-logos-wrap {

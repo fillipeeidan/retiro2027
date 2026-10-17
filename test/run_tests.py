@@ -112,7 +112,9 @@ def test_html_official_texts():
 
     # 6. Contato e Dúvidas
     assert_true("Precisa de ajuda?" in html, "Título da Seção 6 de Dúvidas presente")
-    assert_true("FALAR COM O DIÁCONO JUNIOR" in html, "Botão da Seção 6 presente")
+    assert_true("FALAR COM A DIACONISA FRANCIELE" in html, "Botão da Diaconisa Franciele na Seção 6 presente")
+    assert_true("https://wa.me/5595991133301" in html, "Link para WhatsApp da Diaconisa Franciele presente")
+    assert_true("FALAR COM O DIÁCONO JUNIOR" in html, "Botão do Diácono Junior na Seção 6 presente")
     assert_true("https://wa.me/5595991756439" in html, "Link para WhatsApp do Diácono Junior presente")
 
     # 7. Encerramento
