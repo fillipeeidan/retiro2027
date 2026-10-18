@@ -33,41 +33,51 @@ Este guia explica como ativar a integração oficial entre o site do retiro e a 
 
 ---
 
-### Passo 4: Publicar o Web App
+### Passo 4: Publicar ou Atualizar o Web App
 
+#### Se for a primeira vez que você está implantando:
 1. No canto superior direito do Apps Script, clique no botão azul **Implantar** > **Nova implantação**.
 2. Clique no ícone de engrenagem ao lado de "Selecione o tipo" e escolha **App da Web**.
 3. Preencha os campos da seguinte forma:
-   - **Descrição**: `API de Inscrições Retiro 2027 v1`
+   - **Descrição**: `API de Inscrições Retiro 2027 v2`
    - **Executar como**: `Eu (seu-email@gmail.com)`
-   - **Quem tem acesso**: `Qualquer pessoa` *(essencial para que os visitantes possam enviar o formulário público)*
+   - **Quem tem acesso**: `Qualquer pessoa` *(essencial para que os visitantes possam enviar o formulário e o comprovante público)*
 4. Clique em **Implantar**.
-5. Copie a **URL do app da Web** gerada (algo parecido com `https://script.google.com/macros/s/AKfycb.../exec`).
+5. Conceda as permissões solicitadas (incluindo acesso ao Google Drive para a pasta de comprovantes).
+6. Copie a **URL do app da Web** gerada (algo parecido com `https://script.google.com/macros/s/AKfycb.../exec`).
+
+#### Se você já tem o Web App implantado e está atualizando o código:
+1. Cole o novo código de [`google-apps-script/Code.gs`](Code.gs) no editor e salve (`Ctrl + S`).
+2. Execute a função **`setupSpreadsheet`** uma vez no menu de depuração para criar a coluna de comprovante e os menus suspensos. Conceda a permissão do Google Drive se solicitada.
+3. Clique em **Implantar** > **Gerenciar implantações**.
+4. Clique no ícone de **lápis (Editar)** no canto superior direito da janela de implantação.
+5. No campo **Versão**, clique no menu e selecione **"Nova versão"**.
+6. Clique no botão azul **Implantar**. *(IMPORTANTE: sem criar uma 'Nova versão', o Google continuará executando o código antigo).*
 
 ---
 
-### Passo 5: Vincular a URL ao Site
+### Passo 5: Recursos Automatizados da Planilha
+
+1. **Menus Suspensos (Validação de Dados)**:
+   - Na aba **`PEDIDOS`**, a coluna **Status da inscrição** possui um menu suspenso com opções:
+     - `Aguardando pagamento` (padrão inicial)
+     - `Comprovante enviado` (definido automaticamente quando a pessoa anexa o arquivo)
+     - `Pagamento confirmado` (selecionado pelo tesoureiro após conferir o extrato)
+     - `Pendente de validação PcD`
+     - `Cancelado`
+2. **Carimbo Automático de Data e Hora de Confirmação**:
+   - Assim que o tesoureiro mudar o status para `Pagamento confirmado`, a coluna **Data e hora da confirmação do pagamento** é preenchida automaticamente com o dia e hora exatos de Boa Vista!
+3. **Comprovante Anexado com Link Direto no Google Drive**:
+   - Quando o inscrito anexa a foto ou PDF do comprovante no site, o arquivo é salvo automaticamente na pasta **`Comprovantes — Retiro 2027`** do seu Google Drive.
+   - Na coluna **Comprovante (Link)** da planilha, é gerado um link clicável `Visualizar Comprovante`. Clicando nele, o tesoureiro abre o comprovante imediatamente em tela cheia para conferência!
+
+---
+
+### Passo 6: Vincular a URL ao Site
 
 1. Abra o arquivo [`js/config.js`](../js/config.js) no projeto do site.
 2. Localize a propriedade `googleAppsScriptUrl` e cole a URL copiada:
    ```javascript
    googleAppsScriptUrl: "https://script.google.com/macros/s/SUA_URL_AQUI/exec",
    ```
-3. Pronto! Todas as inscrições enviadas pelo formulário serão salvas de forma real, automática e imediata nas abas da sua planilha.
-
----
-
-### Passo 6: Configuração da Chave Pix Oficial
-
-Quando a tesouraria da igreja definir a chave Pix oficial (CPF, CNPJ, E-mail ou Telefone):
-1. Abra o arquivo [`js/config.js`](../js/config.js).
-2. Atualize o bloco `pix`:
-   ```javascript
-   pix: {
-     key: "suachavepix@igreja.com.br", // insira a chave oficial real
-     keyType: "EMAIL",
-     receiverName: "Igreja Adventista da Promessa",
-     receiverCity: "Boa Vista",
-   }
-   ```
-3. O site gerará automaticamente o QR Code Pix estático oficial e o código Pix Copia e Cola para todos os pagamentos.
+3. Pronto! Todas as inscrições e comprovantes enviados pelo site cairão automaticamente na sua planilha e no seu Google Drive.

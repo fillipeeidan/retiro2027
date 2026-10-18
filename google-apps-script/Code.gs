@@ -11,7 +11,7 @@
  * 1. Abra a planilha do Google Sheets.
  * 2. Acesse Extensões > Apps Script.
  * 3. Substitua todo o conteúdo do arquivo Código.gs por este código e Salve (Ctrl+S).
- * 4. Execute a função "setupSpreadsheet" uma vez (ela cria os menus suspensos e migra colunas automaticamente).
+ * 4. Execute a função "setupSpreadsheet" uma vez (cria os menus suspensos e organiza as colunas).
  * 5. Clique em "Implantar" > "Gerenciar implantações".
  * 6. Clique no ícone de lápis (Editar) > Versão: "Nova versão" > Clique em "Implantar".
  */
@@ -21,6 +21,7 @@ const CONFIG = {
   SHEET_PEDIDOS: "PEDIDOS",
   SHEET_PARTICIPANTES: "PARTICIPANTES",
   CURRENCY_SYMBOL: "R$ ",
+  DRIVE_FOLDER_NAME: "Comprovantes — Retiro 2027",
   PRICING: {
     INTEIRA_CENTS: 15000,
     MEIA_CENTS: 7500,
@@ -37,7 +38,7 @@ const CONFIG = {
 function setupSpreadsheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   
-  // Cabeçalhos Oficiais da Aba PEDIDOS (16 Colunas Unificadas)
+  // Cabeçalhos Oficiais da Aba PEDIDOS (17 Colunas)
   const headersPedidos = [
     "Código do pedido",
     "Data e hora do pedido",
@@ -53,6 +54,7 @@ function setupSpreadsheet() {
     "Valor calculado a pagar",
     "Forma de pagamento escolhida",
     "Status da inscrição",
+    "Comprovante (Link)",
     "Data e hora da confirmação do pagamento",
     "Observações administrativas"
   ];
@@ -120,7 +122,7 @@ function setupSpreadsheet() {
     try { ss.deleteSheet(defaultSheet); } catch (e) {}
   }
 
-  Logger.log("Planilha configurada e atualizada com sucesso com Menus Suspensos e Abas formatadas!");
+  Logger.log("Planilha configurada e atualizada com sucesso com Menus Suspensos e Coluna de Comprovante!");
 }
 
 /**
@@ -140,6 +142,7 @@ function applyDropdownValidations(sheetPedidos, sheetParticipantes) {
   const ruleStatusInscricao = SpreadsheetApp.newDataValidation()
     .requireValueInList([
       "Aguardando pagamento", 
+      "Comprovante enviado",
       "Pagamento confirmado", 
       "Pendente de validação PcD", 
       "Cancelado"
@@ -196,7 +199,7 @@ function applyDropdownValidations(sheetPedidos, sheetParticipantes) {
  * Gatilho simples onEdit do Google Sheets:
  * Quando o tesoureiro/equipe seleciona "Pagamento confirmado" no menu suspenso
  * da coluna "Status da inscrição" (Coluna 14), carimba automaticamente a Data e Hora
- * na coluna "Data e hora da confirmação do pagamento" (Coluna 15).
+ * na coluna "Data e hora da confirmação do pagamento" (Coluna 16).
  */
 function onEdit(e) {
   if (!e || !e.range) return;
@@ -210,23 +213,22 @@ function onEdit(e) {
     if (row < 2) return;
 
     if (sheetName === CONFIG.SHEET_PEDIDOS) {
-      // Coluna 14: Status da inscrição
       if (col === 14) {
         const val = String(e.value || e.range.getValue()).trim();
-        const cellDataHora = sheet.getRange(row, 15); // Coluna 15: Data e hora da confirmação
+        const cellDataHora = sheet.getRange(row, 16); // Coluna 16: Data e hora da confirmação
 
         if (val === "Pagamento confirmado") {
           if (!cellDataHora.getValue()) {
             const nowStr = Utilities.formatDate(new Date(), CONFIG.TIMEZONE, "dd/MM/yyyy HH:mm:ss");
             cellDataHora.setValue(nowStr);
           }
-        } else if (val === "Aguardando pagamento" || val === "Cancelado") {
+        } else if (val === "Aguardando pagamento" || val === "Comprovante enviado" || val === "Cancelado") {
           cellDataHora.clearContent();
         }
       }
     }
   } catch (err) {
-    // Ignorar eventuais falhas de contexto do gatilho
+    // Ignorar falhas de contexto do gatilho
   }
 }
 
@@ -234,7 +236,6 @@ function formatHeaderRow(sheet, headers, bgColor) {
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(headers);
   } else {
-    // Limpar cabeçalho excedente caso colunas tenham sido reduzidas
     const lastCol = Math.max(sheet.getLastColumn(), headers.length);
     if (lastCol > headers.length) {
       sheet.getRange(1, headers.length + 1, 1, lastCol - headers.length).clear();
@@ -268,7 +269,7 @@ function doGet(e) {
 }
 
 /**
- * Endpoint POST principal para processamento das inscrições
+ * Endpoint POST principal para processamento das inscrições e upload de comprovantes
  */
 function doPost(e) {
   const lock = LockService.getScriptLock();
@@ -291,6 +292,12 @@ function doPost(e) {
       return createJsonResponse(false, "Formato JSON inválido.", null, 400);
     }
 
+    // Rota 1: Upload de Comprovante de Pagamento
+    if (payload.action === "uploadComprovante" || payload.fileBase64) {
+      return handleUploadComprovante(payload);
+    }
+
+    // Rota 2: Envio Normal de Inscrição
     // 1. Validação dos dados do Responsável
     const responsavel = payload.responsavel || {};
     if (!responsavel.nome || !responsavel.nome.trim()) {
@@ -458,7 +465,7 @@ function doPost(e) {
       statusInscricao = "Pagamento confirmado";
     }
 
-    // 7. Montagem da linha de PEDIDO (16 Colunas Unificadas)
+    // Montagem da linha de PEDIDO (17 Colunas)
     const rowPedido = [
       orderId,
       dataHoraFormatted,
@@ -474,11 +481,11 @@ function doPost(e) {
       totalFormatado,
       paymentMethod,
       statusInscricao,
-      statusInscricao === "Pagamento confirmado" ? dataHoraFormatted : "",
-      observacoes.join(" | ")
+      "", // Coluna 15: Comprovante (Link do arquivo no Drive)
+      statusInscricao === "Pagamento confirmado" ? dataHoraFormatted : "", // Coluna 16: Data/Hora confirmação
+      observacoes.join(" | ") // Coluna 17: Observações administrativas
     ];
 
-    // 8. Gravação atômica na planilha
     sheetPedidos.appendRow(rowPedido);
 
     if (rowsParticipantes.length > 0) {
@@ -487,7 +494,6 @@ function doPost(e) {
       range.setValues(rowsParticipantes);
     }
 
-    // 9. Resposta de Sucesso
     return createJsonResponse(true, "Inscrição registrada com sucesso no Google Sheets!", {
       orderId: orderId,
       totalFormatted: totalFormatado,
@@ -502,6 +508,130 @@ function doPost(e) {
     return createJsonResponse(false, "Erro interno ao processar a inscrição: " + error.message, null, 500);
   } finally {
     lock.releaseLock();
+  }
+}
+
+/**
+ * Processa o upload de comprovante de pagamento via Pix
+ * Salva no Google Drive (pasta 'Comprovantes — Retiro 2027') e vincula o link na planilha
+ */
+function handleUploadComprovante(payload) {
+  const orderId = (payload.orderId || "").trim();
+  if (!orderId) {
+    return createJsonResponse(false, "Código do pedido não informado.", null, 400);
+  }
+
+  if (!payload.fileBase64) {
+    return createJsonResponse(false, "Nenhum arquivo de comprovante recebido.", null, 400);
+  }
+
+  try {
+    let base64Data = payload.fileBase64;
+    if (base64Data.indexOf("base64,") > -1) {
+      base64Data = base64Data.split("base64,")[1];
+    }
+    const bytes = Utilities.base64Decode(base64Data);
+
+    const safeOrderId = orderId.replace(/[^a-zA-Z0-9]/g, "");
+    const cleanExt = (payload.fileName && payload.fileName.indexOf(".") > -1) 
+      ? payload.fileName.split(".").pop().toLowerCase() 
+      : "jpg";
+    const fileName = `Comprovante_${safeOrderId}_${new Date().getTime()}.${cleanExt}`;
+    const mimeType = payload.mimeType || (cleanExt === "pdf" ? "application/pdf" : "image/jpeg");
+    const blob = Utilities.newBlob(bytes, mimeType, fileName);
+
+    // Obter ou criar pasta no Google Drive
+    let folder;
+    const folderName = CONFIG.DRIVE_FOLDER_NAME || "Comprovantes — Retiro 2027";
+    const folders = DriveApp.getFoldersByName(folderName);
+    if (folders.hasNext()) {
+      folder = folders.next();
+    } else {
+      folder = DriveApp.createFolder(folderName);
+    }
+
+    const file = folder.createFile(blob);
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (e) {
+      Logger.log("Aviso permissão compartilhamento: " + e.toString());
+    }
+
+    const fileUrl = file.getUrl();
+
+    // Localizar o pedido na planilha PEDIDOS
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheetPedidos = ss.getSheetByName(CONFIG.SHEET_PEDIDOS);
+    if (!sheetPedidos) {
+      setupSpreadsheet();
+      sheetPedidos = ss.getSheetByName(CONFIG.SHEET_PEDIDOS);
+    }
+
+    const lastRow = sheetPedidos.getLastRow();
+    let targetRow = -1;
+    if (lastRow > 1) {
+      const orderIds = sheetPedidos.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (let i = 0; i < orderIds.length; i++) {
+        if (orderIds[i][0] === orderId) {
+          targetRow = i + 2;
+          break;
+        }
+      }
+    }
+
+    const now = new Date();
+    const dataHoraFormatted = Utilities.formatDate(now, CONFIG.TIMEZONE, "dd/MM/yyyy HH:mm:ss");
+
+    if (targetRow > 1) {
+      // Atualizar Coluna 14: Status da inscrição para "Comprovante enviado"
+      sheetPedidos.getRange(targetRow, 14).setValue("Comprovante enviado");
+
+      // Atualizar Coluna 15: Comprovante (Link clicável)
+      const formula = `=HYPERLINK("${fileUrl}"; "Visualizar Comprovante")`;
+      sheetPedidos.getRange(targetRow, 15).setValue(formula);
+
+      // Atualizar Coluna 17: Observações administrativas
+      const obsCell = sheetPedidos.getRange(targetRow, 17);
+      const currentObs = obsCell.getValue() ? String(obsCell.getValue()) : "";
+      const newObs = currentObs 
+        ? `${currentObs} | Comprovante anexado em ${dataHoraFormatted}`
+        : `Comprovante anexado em ${dataHoraFormatted}`;
+      obsCell.setValue(newObs);
+    } else {
+      // Caso o pedido não tenha sido localizado por algum motivo, registra linha avulsa de salvamento
+      const rowAvulsa = [
+        orderId,
+        dataHoraFormatted,
+        "Não identificado",
+        "",
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        "A conferir",
+        "Pix",
+        "Comprovante enviado",
+        `=HYPERLINK("${fileUrl}"; "Visualizar Comprovante")`,
+        "",
+        "Comprovante recebido antes da gravação do pedido"
+      ];
+      sheetPedidos.appendRow(rowAvulsa);
+    }
+
+    return createJsonResponse(true, "Comprovante anexado com sucesso!", {
+      orderId: orderId,
+      fileUrl: fileUrl,
+      fileName: fileName,
+      statusInscricao: "Comprovante enviado",
+      timestamp: dataHoraFormatted
+    });
+
+  } catch (err) {
+    Logger.log("Erro ao processar comprovante: " + err.toString());
+    return createJsonResponse(false, "Erro ao salvar comprovante no Google Drive: " + err.message, null, 500);
   }
 }
 

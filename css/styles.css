@@ -1841,7 +1841,7 @@ img {
   background-color: #245844;
 }
 
-/* WhatsApp CTA */
+/* WhatsApp CTA (Usado na opção de Cartão) */
 .whatsapp-cta-box {
   text-align: center;
   margin-bottom: 32px;
@@ -1878,6 +1878,251 @@ img {
   color: var(--color-text-muted);
   margin-top: 10px;
   line-height: 1.4;
+}
+
+/* Card de Anexo do Comprovante de Pagamento Pix */
+.receipt-upload-card {
+  background: #ffffff;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 28px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.25s ease;
+}
+
+.receipt-upload-card.dragover {
+  border-color: var(--color-forest-deep);
+  background-color: #f3f8f5;
+}
+
+.receipt-upload-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--color-forest-deep);
+}
+
+.receipt-upload-header h3 {
+  font-family: var(--font-bridge);
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-forest-deep);
+}
+
+.receipt-upload-desc {
+  font-size: 0.92rem;
+  color: var(--color-text-muted);
+  margin-bottom: 16px;
+  line-height: 1.45;
+}
+
+.receipt-dropzone {
+  border: 2px dashed #b7d6c3;
+  border-radius: var(--radius-md);
+  background: #fafcfb;
+  padding: 28px 18px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.receipt-dropzone:hover {
+  background: #f2f7f4;
+  border-color: var(--color-forest-deep);
+}
+
+.dropzone-idle svg {
+  color: var(--color-forest-deep);
+  margin-bottom: 10px;
+}
+
+.dropzone-idle .drop-prompt {
+  display: block;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-forest-deep);
+  margin-bottom: 4px;
+}
+
+.dropzone-idle .drop-hint {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.dropzone-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  background: #f0f7f3;
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+
+.file-preview-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.file-preview-meta svg {
+  flex-shrink: 0;
+  color: var(--color-forest-deep);
+}
+
+.file-preview-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.file-name-text {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-size-text {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.btn-remove-file {
+  background: transparent;
+  border: none;
+  color: #c94b4b;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.btn-remove-file:hover {
+  background: #fce8e8;
+}
+
+.btn-upload-receipt {
+  width: 100%;
+  margin-top: 16px;
+  background-color: var(--color-forest-deep);
+  color: #ffffff;
+  font-family: var(--font-bridge);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 15px 24px;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(26, 64, 49, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.btn-upload-receipt:hover:not(:disabled) {
+  background-color: #245844;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(26, 64, 49, 0.35);
+}
+
+.btn-upload-receipt:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.receipt-upload-error {
+  color: #c94b4b;
+  font-size: 0.88rem;
+  font-weight: 500;
+  margin-top: 10px;
+  text-align: center;
+  display: none;
+}
+
+.receipt-success-box {
+  background: #f0fbf4;
+  border: 1.5px solid #58b680;
+  border-radius: var(--radius-md);
+  padding: 24px 20px;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.receipt-success-icon {
+  width: 48px;
+  height: 48px;
+  background: #58b680;
+  color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px auto;
+}
+
+.receipt-success-title {
+  font-family: var(--font-bridge);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1a4031;
+  margin-bottom: 6px;
+}
+
+.receipt-success-desc {
+  font-size: 0.95rem;
+  color: #2e5944;
+  line-height: 1.5;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.receipt-link-view {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 0.92rem;
+  color: var(--color-forest-deep);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.receipt-alt-whatsapp {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.receipt-alt-whatsapp a {
+  color: #128c7e;
+  font-weight: 600;
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.receipt-alt-whatsapp a:hover {
+  color: #075e54;
 }
 
 .completion-notices {

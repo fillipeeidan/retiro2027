@@ -272,9 +272,12 @@ def test_google_apps_script_integrity():
     assert_true("Opção de transporte" in code, "Coluna Opção de transporte presente em Code.gs")
     assert_true("DIARIA_INTEIRA_CENTS" in code, "Constante DIARIA_INTEIRA_CENTS presente em Code.gs")
     assert_true("DIARIA_MEIA_CENTS" in code, "Constante DIARIA_MEIA_CENTS presente em Code.gs")
+    assert_true("handleUploadComprovante" in code, "Função handleUploadComprovante implementada em Code.gs")
+    assert_true("Comprovante (Link)" in code, "Coluna Comprovante (Link) presente em Code.gs")
+    assert_true("Comprovantes — Retiro 2027" in code, "Nome da pasta do Drive para comprovantes configurado")
 
 def test_transport_and_wizard_rules():
-    print("\n--- TESTE 8: Regras de Transporte de Ônibus e Wizard de 4 Etapas ---")
+    print("\n--- TESTE 8: Regras de Transporte de Ônibus, Wizard de 4 Etapas e Upload de Comprovante ---")
     js_form_path = os.path.join(ROOT_DIR, "js/form.js")
     with open(js_form_path, "r", encoding="utf-8") as f:
         js = f.read()
@@ -287,6 +290,9 @@ def test_transport_and_wizard_rules():
     assert_true("btn-diaria-day" in js, "Botões de seleção de dias da diária presentes em form.js")
     assert_true("step3-review-container" in js, "Etapa 3 é a Revisão do Pedido")
     assert_true("step4-total-display" in js, "Etapa 4 é a Forma de Pagamento")
+    assert_true("receipt-dropzone" in js, "Área de dropzone para comprovante presente em form.js")
+    assert_true("btn-submit-receipt" in js, "Botão de envio de comprovante presente em form.js")
+    assert_true("uploadComprovante" in js, "Ação uploadComprovante presente em form.js")
 
     html_path = os.path.join(ROOT_DIR, "index.html")
     with open(html_path, "r", encoding="utf-8") as f:

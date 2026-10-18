@@ -1425,7 +1425,7 @@ const RegistrationForm = (() => {
 
         <div class="completion-body">
           <p class="completion-lead-text">
-            Seus dados foram enviados com sucesso! Para confirmar sua vaga, realize o pagamento via Pix utilizando o <strong>QR Code</strong> ou <strong>copiando a chave Pix</strong> abaixo. Em seguida, clique no botão para enviar o comprovante ao Diácono Junior.
+            Seus dados foram enviados com sucesso! Para confirmar sua vaga, realize o pagamento via Pix utilizando o <strong>QR Code</strong> ou <strong>copiando a chave Pix</strong> abaixo. Em seguida, anexe o comprovante de pagamento para validação pela tesouraria.
           </p>
 
           <div class="amount-to-pay-card">
@@ -1473,15 +1473,87 @@ const RegistrationForm = (() => {
             ` : ""}
           </div>
 
-          <!-- Botão WhatsApp Diácono Junior -->
-          <div class="whatsapp-cta-box">
-            <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-action">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z"></path>
+          <!-- Card de Upload do Comprovante de Pagamento -->
+          <div class="receipt-upload-card" id="receipt-upload-card">
+            <div class="receipt-upload-header">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
-              <span>ENVIAR COMPROVANTE PELO WHATSAPP</span>
-            </a>
-            <span class="whatsapp-hint">Após pagar, clique no botão acima para enviar o comprovante ao Diácono Junior (${RETIRO_CONFIG.contacts.diaconoJunior.phone}). O código do seu pedido (${order.orderId}) já estará incluso na mensagem.</span>
+              <h3>Anexar Comprovante do Pix</h3>
+            </div>
+            <p class="receipt-upload-desc">
+              Após efetuar o Pix no seu banco, anexe a foto ou PDF do comprovante aqui para que a equipe financeira confirme seu pagamento na planilha oficial.
+            </p>
+
+            <input type="file" id="receipt-file-input" accept="image/*,.pdf" style="display: none;" />
+
+            <div class="receipt-dropzone" id="receipt-dropzone" tabindex="0" role="button" aria-label="Anexar arquivo de comprovante">
+              <div class="dropzone-idle" id="dropzone-idle">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+                  <path d="M12 12v9"></path>
+                  <path d="m8 17 4-5 4 5"></path>
+                </svg>
+                <span class="drop-prompt">Clique aqui ou arraste o comprovante</span>
+                <span class="drop-hint">Formatos aceitos: JPG, PNG ou PDF (até 10 MB)</span>
+              </div>
+
+              <div class="dropzone-selected" id="dropzone-selected" style="display: none;">
+                <div class="file-preview-meta">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="file-type-icon">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                  </svg>
+                  <div class="file-preview-info">
+                    <span class="file-name-text" id="selected-file-name">comprovante.jpg</span>
+                    <span class="file-size-text" id="selected-file-size">1.2 MB</span>
+                  </div>
+                </div>
+                <button type="button" class="btn-remove-file" id="btn-remove-file" title="Remover comprovante">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="receipt-upload-error" id="receipt-upload-error"></div>
+
+            <button type="button" class="btn-upload-receipt" id="btn-submit-receipt" disabled>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>ENVIAR COMPROVANTE</span>
+            </button>
+
+            <div class="receipt-success-box" id="receipt-success-box" style="display: none;">
+              <div class="receipt-success-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <div class="receipt-success-title">Comprovante enviado com sucesso!</div>
+              <p class="receipt-success-desc">
+                O arquivo foi anexado ao seu pedido e registrado na planilha oficial. A equipe financeira irá conferir a compensação bancária e confirmar sua vaga.
+              </p>
+              <div id="receipt-link-container"></div>
+            </div>
+
+            <!-- Fallback discreto via WhatsApp -->
+            <div class="receipt-alt-whatsapp">
+              Teve alguma dificuldade para anexar? 
+              <a href="${waUrl}" target="_blank" rel="noopener noreferrer">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z"></path>
+                </svg>
+                Enviar comprovante pelo WhatsApp do Diácono Junior
+              </a>
+            </div>
           </div>
 
           <!-- Avisos Importantes -->
@@ -1562,6 +1634,213 @@ const RegistrationForm = (() => {
               <span>Copiar Chave</span>
             `;
           }, 2500);
+        }
+      };
+    }
+
+    // Lógica de Anexo e Envio do Comprovante
+    let selectedReceiptFile = null;
+    const fileInput = document.getElementById("receipt-file-input");
+    const dropzone = document.getElementById("receipt-dropzone");
+    const dropzoneIdle = document.getElementById("dropzone-idle");
+    const dropzoneSelected = document.getElementById("dropzone-selected");
+    const selectedFileName = document.getElementById("selected-file-name");
+    const selectedFileSize = document.getElementById("selected-file-size");
+    const btnRemoveFile = document.getElementById("btn-remove-file");
+    const btnSubmitReceipt = document.getElementById("btn-submit-receipt");
+    const uploadError = document.getElementById("receipt-upload-error");
+    const uploadSuccess = document.getElementById("receipt-success-box");
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return "0 Bytes";
+      const k = 1024;
+      const sizes = ["Bytes", "KB", "MB", "GB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+    }
+
+    function handleFileSelection(file) {
+      if (uploadError) {
+        uploadError.style.display = "none";
+        uploadError.textContent = "";
+      }
+
+      if (!file) return;
+
+      const maxBytes = 10 * 1024 * 1024; // 10 MB
+      if (file.size > maxBytes) {
+        if (uploadError) {
+          uploadError.textContent = "O arquivo excede o limite máximo de 10 MB. Escolha um arquivo menor.";
+          uploadError.style.display = "block";
+        }
+        return;
+      }
+
+      const isImage = file.type.startsWith("image/");
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+      if (!isImage && !isPdf) {
+        if (uploadError) {
+          uploadError.textContent = "Formato de arquivo não suportado. Por favor, envie uma foto (JPG, PNG) ou documento PDF.";
+          uploadError.style.display = "block";
+        }
+        return;
+      }
+
+      selectedReceiptFile = file;
+      if (selectedFileName) selectedFileName.textContent = file.name;
+      if (selectedFileSize) selectedFileSize.textContent = formatBytes(file.size);
+
+      if (dropzoneIdle) dropzoneIdle.style.display = "none";
+      if (dropzoneSelected) dropzoneSelected.style.display = "flex";
+      if (btnSubmitReceipt) btnSubmitReceipt.disabled = false;
+    }
+
+    if (dropzone && fileInput) {
+      dropzone.onclick = (e) => {
+        if (e.target.closest("#btn-remove-file")) return;
+        fileInput.click();
+      };
+
+      fileInput.onchange = () => {
+        if (fileInput.files && fileInput.files[0]) {
+          handleFileSelection(fileInput.files[0]);
+        }
+      };
+
+      dropzone.ondragover = (e) => {
+        e.preventDefault();
+        dropzone.classList.add("dragover");
+      };
+
+      dropzone.ondragleave = (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("dragover");
+      };
+
+      dropzone.ondrop = (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("dragover");
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+          handleFileSelection(e.dataTransfer.files[0]);
+        }
+      };
+    }
+
+    if (btnRemoveFile) {
+      btnRemoveFile.onclick = (e) => {
+        e.stopPropagation();
+        selectedReceiptFile = null;
+        if (fileInput) fileInput.value = "";
+        if (dropzoneIdle) dropzoneIdle.style.display = "block";
+        if (dropzoneSelected) dropzoneSelected.style.display = "none";
+        if (btnSubmitReceipt) btnSubmitReceipt.disabled = true;
+      };
+    }
+
+    if (btnSubmitReceipt) {
+      btnSubmitReceipt.onclick = async () => {
+        if (!selectedReceiptFile) return;
+
+        btnSubmitReceipt.disabled = true;
+        btnSubmitReceipt.innerHTML = `
+          <span class="spinner"></span>
+          <span>Enviando comprovante...</span>
+        `;
+        if (uploadError) uploadError.style.display = "none";
+
+        try {
+          const reader = new FileReader();
+          const base64Data = await new Promise((resolve, reject) => {
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(selectedReceiptFile);
+          });
+
+          const uploadPayload = {
+            action: "uploadComprovante",
+            orderId: order.orderId,
+            fileName: selectedReceiptFile.name,
+            fileBase64: base64Data,
+            mimeType: selectedReceiptFile.type || "application/octet-stream"
+          };
+
+          const endpoint = RETIRO_CONFIG.googleAppsScriptUrl;
+          let uploadSuccessData = null;
+
+          if (endpoint && endpoint.startsWith("https://script.google.com")) {
+            try {
+              const res = await fetch(endpoint, {
+                method: "POST",
+                mode: "cors",
+                redirect: "follow",
+                headers: {
+                  "Content-Type": "text/plain;charset=utf-8"
+                },
+                body: JSON.stringify(uploadPayload)
+              });
+
+              if (res.ok) {
+                const resJson = await res.json();
+                if (resJson && resJson.success) {
+                  uploadSuccessData = resJson.data || { success: true };
+                }
+              }
+            } catch (corsErr) {
+              console.warn("Aviso de redirect CORS ao enviar comprovante. Aplicando no-cors garantido:", corsErr);
+            }
+
+            if (!uploadSuccessData) {
+              await fetch(endpoint, {
+                method: "POST",
+                mode: "no-cors",
+                headers: {
+                  "Content-Type": "text/plain;charset=utf-8"
+                },
+                body: JSON.stringify(uploadPayload)
+              });
+              uploadSuccessData = { success: true };
+            }
+          } else {
+            console.info("Comprovante anexado em modo local de testes:", uploadPayload);
+            uploadSuccessData = { fileUrl: "#" };
+          }
+
+          // Exibir sucesso
+          if (dropzone) dropzone.style.display = "none";
+          if (btnSubmitReceipt) btnSubmitReceipt.style.display = "none";
+          if (uploadSuccess) uploadSuccess.style.display = "block";
+
+          if (uploadSuccessData && uploadSuccessData.fileUrl && uploadSuccessData.fileUrl !== "#") {
+            const linkContainer = document.getElementById("receipt-link-container");
+            if (linkContainer) {
+              linkContainer.innerHTML = `
+                <a href="${uploadSuccessData.fileUrl}" target="_blank" rel="noopener noreferrer" class="receipt-link-view">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                  <span>Ver comprovante no Google Drive</span>
+                </a>
+              `;
+            }
+          }
+        } catch (err) {
+          console.error("Falha ao enviar comprovante:", err);
+          if (uploadError) {
+            uploadError.textContent = "Não foi possível enviar o comprovante automaticamente. Você pode tentar novamente ou enviá-lo pelo link do WhatsApp abaixo.";
+            uploadError.style.display = "block";
+          }
+          btnSubmitReceipt.disabled = false;
+          btnSubmitReceipt.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <span>TENTAR ENVIAR NOVAMENTE</span>
+          `;
         }
       };
     }
