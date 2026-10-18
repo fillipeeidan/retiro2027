@@ -719,7 +719,7 @@ const RegistrationForm = (() => {
                      class="part-modalidade-radio"
                      data-id="${p.id}" 
                      ${p.modalidade !== 'diaria' ? 'checked' : ''} />
-              <span>Retiro Completo <small style="display:block; font-size:0.78rem; opacity:0.8; font-weight:normal;">Todos os dias (6 a 9 de fev)</small></span>
+              <span>Retiro Completo</span>
             </label>
             <label class="modalidade-card-label ${p.modalidade === 'diaria' ? 'selected' : ''}" for="modalidade-diaria-${p.id}">
               <input type="radio" 
@@ -729,13 +729,13 @@ const RegistrationForm = (() => {
                      class="part-modalidade-radio"
                      data-id="${p.id}" 
                      ${p.modalidade === 'diaria' ? 'checked' : ''} />
-              <span>Diária Avulsa <small style="display:block; font-size:0.78rem; opacity:0.8; font-weight:normal;">R$ 60/dia (meia R$ 30/dia)</small></span>
+              <span>Diária Avulsa</span>
             </label>
           </div>
 
           <!-- Seletor de Quantidade de Diárias -->
           <div class="diaria-days-box" id="diaria-days-box-${p.id}" style="${p.modalidade === 'diaria' ? 'display: block;' : 'display: none;'}">
-            <span class="diaria-days-title">Quantas diárias esse participante irá comparecer?</span>
+            <span class="diaria-days-title">Quantidade de diárias:</span>
             <div class="diaria-days-buttons">
               <button type="button" 
                       class="btn-diaria-day ${(!p.diasDiaria || p.diasDiaria === 1) ? 'active' : ''}" 
@@ -750,18 +750,7 @@ const RegistrationForm = (() => {
                 2 Diárias
               </button>
             </div>
-            <span class="diaria-tip-note">💡 Participação em 3 ou mais dias? O <strong>Retiro Completo</strong> é mais econômico e inclui todas as atividades.</span>
           </div>
-        </div>
-
-        <div class="participant-preview-pill" id="preview-pill-${p.id}">
-          ${evaluation.hasBirthDate ? `
-            <span class="pill-age">Idade: <strong>${evaluation.age} ano(s)</strong></span>
-            <span class="pill-category">Categoria: <strong>${evaluation.categoryLabel}</strong></span>
-            <span class="pill-price">Valor: <strong>${p.solicitaIsencaoPcd ? "Sob validação manual" : (isAutoChild ? "Gratuito" : formatMoney(evaluation.currentPayableCents))}</strong></span>
-          ` : `
-            <span class="pill-hint">${p.modalidade === 'diaria' ? 'Diária selecionada. Digite a data de nascimento (DD/MM/AAAA) para calcular a categoria e valor.' : 'Digite a data de nascimento (DD/MM/AAAA) para calcular a categoria e o valor do ingresso.'}</span>
-          `}
         </div>
 
         <!-- Opções do Participante: PcD e Transporte -->
@@ -771,18 +760,18 @@ const RegistrationForm = (() => {
               <input type="checkbox" id="part-pcd-${p.id}" class="part-pcd-input" 
                      data-id="${p.id}" ${p.solicitaIsencaoPcd ? "checked" : ""} />
               <span class="checkbox-custom"></span>
-              <span class="checkbox-text">${index === 0 ? "Sou pessoa com deficiência ou desejo solicitar isenção para este participante." : "Desejo solicitar isenção por deficiência para este participante."}</span>
+              <span class="checkbox-text">Solicitar isenção por deficiência (PcD)</span>
             </label>
           </div>
           <div class="pcd-notice" id="pcd-notice-${p.id}" style="${p.solicitaIsencaoPcd ? "display: block;" : "display: none;"}">
-            <div class="alert-box alert-warning">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="alert-box alert-warning" style="padding: 10px 14px; font-size: 0.88rem; margin: 8px 0 12px 0;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
                 <line x1="12" y1="9" x2="12" y2="13"></line>
                 <line x1="12" y1="17" x2="12.01" y2="17"></line>
               </svg>
               <div>
-                <strong>Atenção:</strong> Este pedido será analisado pela equipe organizadora. A solicitação ficará pendente até a validação. Você poderá continuar a inscrição e pagar os demais ingressos normalmente.
+                <strong>Atenção:</strong> Solicitação sujeita à validação da organização.
               </div>
             </div>
           </div>
@@ -792,7 +781,7 @@ const RegistrationForm = (() => {
               <input type="checkbox" id="part-transporte-${p.id}" class="part-transporte-input" 
                      data-id="${p.id}" ${p.transporteOnibus ? "checked" : ""} />
               <span class="checkbox-custom"></span>
-              <span class="checkbox-text">Vou no transporte de ônibus da igreja (ida e volta incluso)</span>
+              <span class="checkbox-text">Transporte no ônibus da igreja (ida e volta)</span>
             </label>
           </div>
         </div>
@@ -806,35 +795,8 @@ const RegistrationForm = (() => {
   }
 
   function updateParticipantPill(id) {
-    const participant = state.participantes.find(p => p.id === id);
-    if (!participant) return;
-    const pill = document.getElementById(`preview-pill-${id}`);
-    if (!pill) return;
-
-    const rawDate = participant.dataNascimento ? String(participant.dataNascimento).trim() : "";
-    const masked = maskDate(rawDate);
-    const digits = masked.replace(/\D/g, "");
-
-    if (digits.length === 8) {
-      const parsed = parseBirthDate(masked);
-      if (parsed) {
-        const evalP = evaluateParticipant(participant);
-        pill.innerHTML = `
-          <span class="pill-age">Idade: <strong>${evalP.age} ano(s)</strong></span>
-          <span class="pill-category">Categoria: <strong>${evalP.categoryLabel}</strong></span>
-          <span class="pill-price">Valor: <strong>${participant.solicitaIsencaoPcd ? "Sob validação manual" : (evalP.isChild ? "Gratuito" : formatMoney(evalP.currentPayableCents))}</strong></span>
-        `;
-      } else {
-        pill.innerHTML = `<span class="pill-hint" style="color: #e05252;">Data de nascimento inválida.</span>`;
-      }
-    } else {
-      if (participant.modalidade === "diaria") {
-        const numDias = participant.diasDiaria === 2 ? 2 : 1;
-        pill.innerHTML = `<span class="pill-hint">Diária selecionada (${numDias} dia${numDias > 1 ? "s" : ""}). Digite a data de nascimento (DD/MM/AAAA) para calcular a categoria e valor.</span>`;
-      } else {
-        pill.innerHTML = `<span class="pill-hint">Digite a data de nascimento (DD/MM/AAAA) para calcular a categoria e o valor do ingresso.</span>`;
-      }
-    }
+    // O cálculo é atualizado dinamicamente nos dados e exibido na Etapa 3 (Revisão)
+    return;
   }
 
   function attachParticipantCardEvents() {
