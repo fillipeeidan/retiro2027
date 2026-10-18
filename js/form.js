@@ -475,6 +475,16 @@ const RegistrationForm = (() => {
         if (dataEl) p.dataNascimento = dataEl.value.trim();
         if (pcdEl) p.solicitaIsencaoPcd = pcdEl.checked;
 
+        // Sincronizar com garantia modalidade e diasDiaria do DOM
+        const radioDiaria = document.getElementById(`modalidade-diaria-${p.id}`);
+        if (radioDiaria) {
+          p.modalidade = radioDiaria.checked ? "diaria" : "completo";
+        }
+        const activeDayBtn = document.querySelector(`#diaria-days-box-${p.id} .btn-diaria-day.active`);
+        if (activeDayBtn) {
+          p.diasDiaria = parseInt(activeDayBtn.getAttribute("data-days"), 10) || 1;
+        }
+
         if (!p.nome || p.nome.length < 2) {
           showError(`part-nome-error-${p.id}`, "Informe o nome completo do participante.");
           isValid = false;
@@ -865,6 +875,17 @@ const RegistrationForm = (() => {
 
         saveDraft();
         updateParticipantPill(id);
+      };
+    });
+
+    // Clique direto nos cards de modalidade para melhor usabilidade em dispositivos móveis
+    document.querySelectorAll(".modalidade-card-label").forEach(lbl => {
+      lbl.onclick = (e) => {
+        const radio = lbl.querySelector("input[type='radio']");
+        if (radio && !radio.checked) {
+          radio.checked = true;
+          radio.dispatchEvent(new Event("change"));
+        }
       };
     });
 

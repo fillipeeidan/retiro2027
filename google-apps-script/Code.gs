@@ -232,8 +232,12 @@ function doPost(e) {
         return createJsonResponse(false, "Data de nascimento de todos os participantes é obrigatória.", null, 400);
       }
 
-      const isDiaria = p.modalidade === "diaria";
-      const numDias = (p.diasDiaria === 2) ? 2 : 1;
+      // Suporte resiliente a diárias avulsas
+      const isDiaria = p.modalidade === "diaria" || 
+                       (typeof p.categoria === "string" && p.categoria.toLowerCase().includes("diária")) ||
+                       (typeof p.categoria === "string" && p.categoria.toLowerCase().includes("diaria")) ||
+                       (p.diasDiaria && p.diasDiaria > 0);
+      const numDias = (p.diasDiaria === 2 || (typeof p.categoria === "string" && p.categoria.includes("2 Diária"))) ? 2 : 1;
       const idadeCalculada = calculateAge(pDataNasc, now);
       let categoria = "Ingresso inteiro";
       let valorUnitarioCents = CONFIG.PRICING.INTEIRA_CENTS;
@@ -249,7 +253,9 @@ function doPost(e) {
       } else if (idadeCalculada <= 11) {
         if (isDiaria) {
           categoria = `Meia-entrada (${numDias} diária${numDias > 1 ? "s" : ""})`;
-          valorUnitarioCents = CONFIG.PRICING.DIARIA_MEIA_CENTS * numDias;
+          valorUnitarioCents = (typeof p.valorCents === "number" && p.valorCents > 0) 
+            ? p.valorCents 
+            : (CONFIG.PRICING.DIARIA_MEIA_CENTS * numDias);
         } else {
           categoria = "Meia-entrada (Retiro Completo)";
           valorUnitarioCents = CONFIG.PRICING.MEIA_CENTS;
@@ -265,7 +271,9 @@ function doPost(e) {
       } else {
         if (isDiaria) {
           categoria = `Ingresso inteiro (${numDias} diária${numDias > 1 ? "s" : ""})`;
-          valorUnitarioCents = CONFIG.PRICING.DIARIA_INTEIRA_CENTS * numDias;
+          valorUnitarioCents = (typeof p.valorCents === "number" && p.valorCents > 0) 
+            ? p.valorCents 
+            : (CONFIG.PRICING.DIARIA_INTEIRA_CENTS * numDias);
         } else {
           categoria = "Ingresso inteiro (Retiro Completo)";
           valorUnitarioCents = CONFIG.PRICING.INTEIRA_CENTS;
@@ -299,6 +307,16 @@ function doPost(e) {
 
     const totalFormatado = formatCurrency(totalCents);
 
+    // Observações administrativas do pedido
+    const observacoes = [];
+    if (countPcdPendente > 0) {
+      observacoes.push("Contém pedido de isenção por deficiência em análise manual.");
+    }
+    const temDiaria = participantes.some(p => p.modalidade === "diaria" || (typeof p.categoria === "string" && p.categoria.toLowerCase().includes("diár")));
+    if (temDiaria) {
+      observacoes.push("Contém participação por diária avulsa.");
+    }
+
     // 7. Montagem da linha de PEDIDO
     const rowPedido = [
       orderId,
@@ -317,7 +335,7 @@ function doPost(e) {
       "Aguardando confirmação",
       "Aguardando pagamento",
       "", // Data confirmação do pagamento
-      countPcdPendente > 0 ? "Contém pedido de isenção por deficiência em análise manual." : ""
+      observacoes.join(" | ")
     ];
 
     // 8. Gravação atômica na planilha
