@@ -1880,6 +1880,63 @@ img {
   line-height: 1.4;
 }
 
+/* Botão Oficial de Checkout da InfinitePay */
+.btn-infinitepay-action {
+  width: 100%;
+  background: linear-gradient(135deg, #1a4031 0%, #245844 100%);
+  color: #ffffff;
+  font-family: var(--font-bridge);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 18px 24px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 22px rgba(26, 64, 49, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: all 0.25s ease;
+  text-decoration: none;
+}
+
+.btn-infinitepay-action:hover {
+  background: linear-gradient(135deg, #245844 0%, #2e6e55 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(26, 64, 49, 0.45);
+  color: #ffffff;
+}
+
+.infinitepay-hint {
+  display: block;
+  font-size: 0.90rem;
+  color: var(--color-text-muted);
+  margin-top: 12px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.cartao-alt-whatsapp {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.cartao-alt-whatsapp a {
+  color: #128c7e;
+  font-weight: 600;
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cartao-alt-whatsapp a:hover {
+  color: #075e54;
+}
+
 /* Card de Anexo do Comprovante de Pagamento Pix */
 .receipt-upload-card {
   background: #ffffff;

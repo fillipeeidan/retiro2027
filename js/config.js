@@ -104,6 +104,12 @@ const RETIRO_CONFIG = {
     receiverCity: "Boa Vista",
   },
 
+  // Configuração Oficial da InfinitePay (Cartão de Crédito em até 12x)
+  infinitePay: {
+    handle: "fillipeeidan", // InfiniteTag oficial do Ir. Fillipe ($fillipeeidan)
+    checkoutApiUrl: "https://api.checkout.infinitepay.io/links"
+  },
+
   // URL do Google Apps Script publicado como Web App
   // Conectado à planilha 'Inscrições — Retiro 2027' no Google Sheets
   googleAppsScriptUrl: "https://script.google.com/macros/s/AKfycbzFtF9qvpgdprT7yRitCVKi_HYWg0LOODJWyAs605YrTstGnRCkAHBiYAfNY02EdvXspg/exec"

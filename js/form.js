@@ -1238,6 +1238,51 @@ const RegistrationForm = (() => {
 
     setSubmitLoading(true);
 
+    // Se a forma de pagamento for cartão de crédito e houver valor a pagar, gera link da InfinitePay
+    let infinitePayUrl = null;
+    if (state.formaPagamento === "cartao" && summary.totalCents > 0) {
+      try {
+        const ipHandle = (RETIRO_CONFIG.infinitePay && RETIRO_CONFIG.infinitePay.handle) ? RETIRO_CONFIG.infinitePay.handle : "fillipeeidan";
+        const ipApi = (RETIRO_CONFIG.infinitePay && RETIRO_CONFIG.infinitePay.checkoutApiUrl) ? RETIRO_CONFIG.infinitePay.checkoutApiUrl : "https://api.checkout.infinitepay.io/links";
+        
+        const ipBody = {
+          handle: ipHandle,
+          items: [
+            {
+              description: `Retiro 2027 (${orderId})`,
+              price: summary.totalCents,
+              quantity: 1
+            }
+          ],
+          order_nsu: orderId,
+          customer: {
+            name: state.responsavel.nome.trim(),
+            phone_number: state.responsavel.whatsapp.replace(/\D/g, "")
+          },
+          webhook_url: RETIRO_CONFIG.googleAppsScriptUrl
+        };
+
+        const ipRes = await fetch(ipApi, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(ipBody)
+        });
+
+        if (ipRes.ok) {
+          const ipData = await ipRes.json();
+          if (ipData && ipData.url) {
+            infinitePayUrl = ipData.url;
+          }
+        }
+      } catch (ipErr) {
+        console.warn("Aviso: Não foi possível pré-gerar link InfinitePay automaticamente. Mantendo fallback via WhatsApp:", ipErr);
+      }
+    }
+
+    payload.infinitePayUrl = infinitePayUrl;
+
     try {
       const endpoint = RETIRO_CONFIG.googleAppsScriptUrl;
       let recordedSuccessfully = false;
@@ -1812,6 +1857,7 @@ const RegistrationForm = (() => {
       `Obrigado!`;
 
     const waUrl = `https://wa.me/${RETIRO_CONFIG.contacts.irFillipe.phoneRaw}?text=${encodeURIComponent(waText)}`;
+    const infinitePayUrl = order.infinitePayUrl || null;
 
     container.innerHTML = `
       <div class="completion-card">
@@ -1827,31 +1873,73 @@ const RegistrationForm = (() => {
         </div>
 
         <div class="completion-body">
-          <p class="completion-lead-text">
-            Sua inscrição foi registrada com sucesso! Para pagar com cartão de crédito (em até 12x), entre em contato com o <strong>Ir. Fillipe</strong> pelo WhatsApp. Ele enviará o link de pagamento oficial com as opções de parcelamento e a simulação das taxas para o seu pedido.
-          </p>
+          ${infinitePayUrl ? `
+            <p class="completion-lead-text">
+              Sua inscrição foi registrada com sucesso! Clique no botão abaixo para efetuar o pagamento com <strong>cartão de crédito em até 12x</strong> pelo checkout oficial e seguro da <strong>InfinitePay</strong>.
+            </p>
 
-          <div class="amount-to-pay-card">
-            <div>
-              <span>Valor base dos ingressos:</span>
-              <div class="amount-tax-hint">+ taxa do cartão conforme parcelamento escolhido</div>
+            <div class="amount-to-pay-card">
+              <div>
+                <span>Valor base dos ingressos:</span>
+                <div class="amount-tax-hint">+ taxa de parcelamento calculada no checkout</div>
+              </div>
+              <div style="text-align: right;">
+                <strong class="amount-val">${order.resumo.totalFormatted}</strong>
+                <div class="amount-tax-sub">em até 12x no cartão</div>
+              </div>
             </div>
-            <div style="text-align: right;">
-              <strong class="amount-val">${order.resumo.totalFormatted}</strong>
-              <div class="amount-tax-sub">+ taxas da maquininha</div>
-            </div>
-          </div>
 
-          <!-- Botão WhatsApp Ir. Fillipe -->
-          <div class="whatsapp-cta-box">
-            <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-action">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z"></path>
-              </svg>
-              <span>SOLICITAR LINK PELO WHATSAPP</span>
-            </a>
-            <span class="whatsapp-hint">O WhatsApp do Ir. Fillipe (${RETIRO_CONFIG.contacts.irFillipe.phone}) será aberto com sua solicitação de link de pagamento em até 12x. O código do seu pedido (${order.orderId}) já está incluso na mensagem.</span>
-          </div>
+            <!-- Botão Oficial de Pagamento InfinitePay -->
+            <div class="whatsapp-cta-box" style="margin-bottom: 16px;">
+              <a href="${infinitePayUrl}" target="_blank" rel="noopener noreferrer" class="btn-infinitepay-action">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                  <line x1="1" y1="10" x2="23" y2="10"></line>
+                </svg>
+                <span>PAGAR COM CARTÃO (EM ATÉ 12X)</span>
+              </a>
+              <span class="infinitepay-hint">
+                Checkout oficial InfinitePay ($${(RETIRO_CONFIG.infinitePay && RETIRO_CONFIG.infinitePay.handle) || "fillipeeidan"}). Você poderá escolher o número de parcelas na tela de pagamento.
+              </span>
+            </div>
+
+            <!-- Fallback discreto via WhatsApp Ir. Fillipe -->
+            <div class="cartao-alt-whatsapp">
+              Deseja tirar dúvidas ou solicitar link direto pelo WhatsApp? 
+              <a href="${waUrl}" target="_blank" rel="noopener noreferrer">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z"></path>
+                </svg>
+                Falar com o Ir. Fillipe no WhatsApp
+              </a>
+            </div>
+          ` : `
+            <p class="completion-lead-text">
+              Sua inscrição foi registrada com sucesso! Para pagar com cartão de crédito (em até 12x), entre em contato com o <strong>Ir. Fillipe</strong> pelo WhatsApp. Ele enviará o link de pagamento oficial com as opções de parcelamento e a simulação das taxas para o seu pedido.
+            </p>
+
+            <div class="amount-to-pay-card">
+              <div>
+                <span>Valor base dos ingressos:</span>
+                <div class="amount-tax-hint">+ taxa do cartão conforme parcelamento escolhido</div>
+              </div>
+              <div style="text-align: right;">
+                <strong class="amount-val">${order.resumo.totalFormatted}</strong>
+                <div class="amount-tax-sub">+ taxas da maquininha</div>
+              </div>
+            </div>
+
+            <!-- Botão WhatsApp Ir. Fillipe -->
+            <div class="whatsapp-cta-box">
+              <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-action">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z"></path>
+                </svg>
+                <span>SOLICITAR LINK PELO WHATSAPP</span>
+              </a>
+              <span class="whatsapp-hint">O WhatsApp do Ir. Fillipe (${RETIRO_CONFIG.contacts.irFillipe.phone}) será aberto com sua solicitação de link de pagamento em até 12x. O código do seu pedido (${order.orderId}) já está incluso na mensagem.</span>
+            </div>
+          `}
 
           <!-- Avisos -->
           <div class="completion-notices">

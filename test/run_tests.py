@@ -301,6 +301,44 @@ def test_transport_and_wizard_rules():
     assert_true("Transporte de ônibus incluso" in html, "Inclusão de transporte de ônibus destacada no HTML")
     assert_true('id="step-4"' in html and 'id="step-5"' not in html, "Formulário possui 4 etapas no HTML sem step-5")
 
+def test_infinitepay_integration():
+    print("\n--- TESTE 9: Integração Automatizada com InfinitePay ($fillipeeidan) ---")
+    config_path = os.path.join(ROOT_DIR, "js/config.js")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = f.read()
+
+    assert_true("infinitePay:" in config or "infinitePay :" in config, "Objeto infinitePay presente em config.js")
+    assert_true("fillipeeidan" in config, "InfiniteTag fillipeeidan oficial configurada em config.js")
+    assert_true("https://api.checkout.infinitepay.io/links" in config, "Endpoint oficial de checkout da InfinitePay configurado em config.js")
+
+    form_path = os.path.join(ROOT_DIR, "js/form.js")
+    with open(form_path, "r", encoding="utf-8") as f:
+        form = f.read()
+
+    assert_true("infinitePayUrl" in form, "Variável infinitePayUrl presente em form.js")
+    assert_true("btn-infinitepay-action" in form, "Classe btn-infinitepay-action presente na tela de conclusão do form.js")
+    assert_true("cartao-alt-whatsapp" in form, "Fallback de WhatsApp para cartão presente em form.js")
+
+    css_path = os.path.join(ROOT_DIR, "css/styles.css")
+    with open(css_path, "r", encoding="utf-8") as f:
+        css = f.read()
+
+    assert_true(".btn-infinitepay-action" in css, "Estilo .btn-infinitepay-action presente em styles.css")
+    assert_true(".cartao-alt-whatsapp" in css, "Estilo .cartao-alt-whatsapp presente em styles.css")
+
+    gs_path = os.path.join(ROOT_DIR, "google-apps-script/Code.gs")
+    with open(gs_path, "r", encoding="utf-8") as f:
+        gs = f.read()
+
+    assert_true("handleInfinitePayWebhook" in gs, "Função handleInfinitePayWebhook implementada em Code.gs")
+    assert_true("infinitePayUrl" in gs, "Salvamento de infinitePayUrl implementado na linha do pedido em Code.gs")
+
+    readme_path = os.path.join(ROOT_DIR, "google-apps-script/README_SETUP.md")
+    with open(readme_path, "r", encoding="utf-8") as f:
+        readme = f.read()
+
+    assert_true("fillipeeidan" in readme, "Documentação da InfinitePay no README_SETUP.md presente")
+
 if __name__ == "__main__":
     try:
         test_file_structure()
@@ -311,6 +349,7 @@ if __name__ == "__main__":
         test_pix_crc16()
         test_google_apps_script_integrity()
         test_transport_and_wizard_rules()
+        test_infinitepay_integration()
         print("\n>>> TODOS OS TESTES PASSARAM COM 100% DE SUCESSO! <<<")
     except Exception as e:
         print(f"\n[ERRO CRITICO] ERRO DURANTE A EXECUCAO DOS TESTES: {e}")

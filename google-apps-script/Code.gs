@@ -297,7 +297,12 @@ function doPost(e) {
       return handleUploadComprovante(payload);
     }
 
-    // Rota 2: Envio Normal de Inscrição
+    // Rota 2: Webhook de Pagamento InfinitePay (Notificação de Pagamento com Cartão)
+    if (payload.order_nsu || payload.orderNSU || payload.transaction_nsu || payload.event === "charge.paid" || (payload.data && (payload.data.order_nsu || payload.data.transaction_nsu))) {
+      return handleInfinitePayWebhook(payload);
+    }
+
+    // Rota 3: Envio Normal de Inscrição
     // 1. Validação dos dados do Responsável
     const responsavel = payload.responsavel || {};
     if (!responsavel.nome || !responsavel.nome.trim()) {
@@ -456,6 +461,9 @@ function doPost(e) {
     if (temDiaria) {
       observacoes.push("Contém participação por diária avulsa.");
     }
+    if (payload.infinitePayUrl) {
+      observacoes.push("Link InfinitePay gerado automaticamente");
+    }
 
     // Status da Inscrição unificado
     let statusInscricao = "Aguardando pagamento";
@@ -481,7 +489,7 @@ function doPost(e) {
       totalFormatado,
       paymentMethod,
       statusInscricao,
-      "", // Coluna 15: Comprovante (Link do arquivo no Drive)
+      payload.infinitePayUrl || "", // Coluna 15: Comprovante (Link do arquivo no Drive ou Link de Checkout InfinitePay)
       statusInscricao === "Pagamento confirmado" ? dataHoraFormatted : "", // Coluna 16: Data/Hora confirmação
       observacoes.join(" | ") // Coluna 17: Observações administrativas
     ];
@@ -632,6 +640,106 @@ function handleUploadComprovante(payload) {
   } catch (err) {
     Logger.log("Erro ao processar comprovante: " + err.toString());
     return createJsonResponse(false, "Erro ao salvar comprovante no Google Drive: " + err.message, null, 500);
+  }
+}
+
+/**
+ * Processa o webhook de confirmação de pagamento da InfinitePay
+ * Atualiza o status da inscrição para 'Pagamento confirmado' e carimba data/hora
+ */
+function handleInfinitePayWebhook(payload) {
+  try {
+    const rawData = payload.data || payload;
+    const orderId = String(rawData.order_nsu || rawData.orderNSU || rawData.order_id || payload.order_nsu || "").trim();
+
+    if (!orderId) {
+      return createJsonResponse(false, "order_nsu não informado no webhook da InfinitePay.", null, 400);
+    }
+
+    const receiptUrl = rawData.receipt_url || rawData.receiptUrl || payload.receipt_url || "";
+    const transactionNsu = rawData.transaction_nsu || rawData.transactionNSU || payload.transaction_nsu || "";
+    const nowStr = Utilities.formatDate(new Date(), CONFIG.TIMEZONE, "dd/MM/yyyy HH:mm:ss");
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetPedidos = ss.getSheetByName(CONFIG.SHEET_PEDIDOS);
+    if (!sheetPedidos) {
+      return createJsonResponse(false, "Aba PEDIDOS não encontrada.", null, 500);
+    }
+
+    const lastRow = sheetPedidos.getLastRow();
+    if (lastRow < 2) {
+      return createJsonResponse(false, "Nenhum pedido encontrado na planilha.", null, 404);
+    }
+
+    const orderIds = sheetPedidos.getRange(2, 1, lastRow - 1, 1).getValues();
+    let foundRow = -1;
+
+    for (let r = 0; r < orderIds.length; r++) {
+      if (String(orderIds[r][0]).trim() === orderId) {
+        foundRow = r + 2;
+        break;
+      }
+    }
+
+    if (foundRow === -1) {
+      return createJsonResponse(false, "Pedido " + orderId + " não encontrado na planilha.", null, 404);
+    }
+
+    // 1. Atualizar Aba PEDIDOS
+    // Coluna 14: Status da inscrição -> "Pagamento confirmado"
+    sheetPedidos.getRange(foundRow, 14).setValue("Pagamento confirmado");
+
+    // Coluna 15: Comprovante (Link) -> Atualiza para receiptUrl se disponível
+    if (receiptUrl) {
+      sheetPedidos.getRange(foundRow, 15).setValue(receiptUrl);
+    }
+
+    // Coluna 16: Data e hora da confirmação do pagamento
+    sheetPedidos.getRange(foundRow, 16).setValue(nowStr);
+
+    // Coluna 17: Observações administrativas -> Anexa confirmação da InfinitePay
+    const cellObs = sheetPedidos.getRange(foundRow, 17);
+    const currObs = String(cellObs.getValue() || "").trim();
+    const infNote = "Cartão confirmado via InfinitePay" + (transactionNsu ? " (NSU: " + transactionNsu + ")" : "");
+    const updatedObs = currObs ? (currObs + " | " + infNote) : infNote;
+    cellObs.setValue(updatedObs);
+
+    // 2. Atualizar Aba PARTICIPANTES
+    const sheetParticipantes = ss.getSheetByName(CONFIG.SHEET_PARTICIPANTES);
+    if (sheetParticipantes) {
+      const pLastRow = sheetParticipantes.getLastRow();
+      if (pLastRow >= 2) {
+        const pOrderIds = sheetParticipantes.getRange(2, 1, pLastRow - 1, 1).getValues();
+        const statusIndivRange = sheetParticipantes.getRange(2, 10, pLastRow - 1, 1);
+        const statusIndivValues = statusIndivRange.getValues();
+        let pChanged = false;
+
+        for (let pr = 0; pr < pOrderIds.length; pr++) {
+          if (String(pOrderIds[pr][0]).trim() === orderId) {
+            // Se estava aguardando pagamento, passa para confirmado
+            if (statusIndivValues[pr][0] === "Aguardando pagamento") {
+              statusIndivValues[pr][0] = "Pagamento confirmado";
+              pChanged = true;
+            }
+          }
+        }
+
+        if (pChanged) {
+          statusIndivRange.setValues(statusIndivValues);
+        }
+      }
+    }
+
+    Logger.log("Webhook InfinitePay processado com sucesso para o pedido " + orderId);
+    return createJsonResponse(true, "Pagamento confirmado via InfinitePay com sucesso!", {
+      orderId: orderId,
+      transactionNsu: transactionNsu,
+      confirmedAt: nowStr
+    });
+
+  } catch (err) {
+    Logger.log("Erro ao processar webhook InfinitePay: " + err.toString());
+    return createJsonResponse(false, "Erro ao processar webhook InfinitePay: " + err.message, null, 500);
   }
 }
 

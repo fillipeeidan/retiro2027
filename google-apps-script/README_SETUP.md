@@ -81,3 +81,16 @@ Este guia explica como ativar a integração oficial entre o site do retiro e a 
    googleAppsScriptUrl: "https://script.google.com/macros/s/SUA_URL_AQUI/exec",
    ```
 3. Pronto! Todas as inscrições e comprovantes enviados pelo site cairão automaticamente na sua planilha e no seu Google Drive.
+
+---
+
+### Passo 7: Automação de Cartão de Crédito com InfinitePay ($fillipeeidan)
+
+1. **Como funciona a geração automática de checkout**:
+   - Quando o participante seleciona **Cartão de Crédito**, o sistema gera automaticamente um link de checkout da **InfinitePay** vinculado à InfiniteTag oficial `$fillipeeidan`.
+   - O participante clica em **PAGAR COM CARTÃO (EM ATÉ 12X)** e realiza o pagamento de forma segura na InfinitePay.
+   - O link gerado fica registrado na coluna **Comprovante (Link)** da planilha.
+2. **Confirmação Automática por Webhook**:
+   - Assim que a operadora do cartão aprova o pagamento, a InfinitePay envia uma notificação automática (webhook) para o Google Apps Script.
+   - O status do pedido na planilha muda automaticamente de `Aguardando pagamento` para **`Pagamento confirmado`**, preenchendo a data/hora da confirmação e o comprovante do recibo!
+   - Se o participante precisar de ajuda, o botão de suporte via WhatsApp com o **Ir. Fillipe** continua disponível como canal de atendimento humanizado.
