@@ -1541,7 +1541,6 @@ const RegistrationForm = (() => {
               <p class="receipt-success-desc">
                 O arquivo foi anexado ao seu pedido e registrado na planilha oficial. A equipe financeira irá conferir a compensação bancária e confirmar sua vaga.
               </p>
-              <div id="receipt-link-container"></div>
             </div>
 
             <!-- Fallback discreto via WhatsApp -->
@@ -1809,23 +1808,11 @@ const RegistrationForm = (() => {
           // Exibir sucesso
           if (dropzone) dropzone.style.display = "none";
           if (btnSubmitReceipt) btnSubmitReceipt.style.display = "none";
+          const altWa = document.querySelector(".receipt-alt-whatsapp");
+          if (altWa) altWa.style.display = "none";
+          const uploadDesc = document.querySelector(".receipt-upload-desc");
+          if (uploadDesc) uploadDesc.style.display = "none";
           if (uploadSuccess) uploadSuccess.style.display = "block";
-
-          if (uploadSuccessData && uploadSuccessData.fileUrl && uploadSuccessData.fileUrl !== "#") {
-            const linkContainer = document.getElementById("receipt-link-container");
-            if (linkContainer) {
-              linkContainer.innerHTML = `
-                <a href="${uploadSuccessData.fileUrl}" target="_blank" rel="noopener noreferrer" class="receipt-link-view">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                    <polyline points="15 3 21 3 21 9"></polyline>
-                    <line x1="10" y1="14" x2="21" y2="3"></line>
-                  </svg>
-                  <span>Ver comprovante no Google Drive</span>
-                </a>
-              `;
-            }
-          }
         } catch (err) {
           console.error("Falha ao enviar comprovante:", err);
           if (uploadError) {
