@@ -7,16 +7,13 @@
  * Este script deve ser colado no Editor do Google Apps Script vinculado à planilha
  * "Inscrições — Retiro 2027".
  * 
- * INSTRUÇÕES RÁPIDAS DE IMPLANTAÇÃO:
- * 1. Crie uma nova planilha no Google Sheets com o nome "Inscrições — Retiro 2027".
+ * INSTRUÇÕES DE IMPLANTAÇÃO / ATUALIZAÇÃO:
+ * 1. Abra a planilha do Google Sheets.
  * 2. Acesse Extensões > Apps Script.
- * 3. Substitua todo o conteúdo do arquivo Código.gs por este código.
- * 4. Execute a função "setupSpreadsheet" uma única vez para criar as abas e cabeçalhos.
- * 5. Clique em "Implantar" > "Nova implantação".
- * 6. Tipo: "App da Web".
- * 7. Executar como: "Eu" (seu e-mail da igreja).
- * 8. Quem tem acesso: "Qualquer pessoa" (permite que o formulário público envie dados).
- * 9. Copie o URL do Web App gerado e cole no arquivo /js/config.js (googleAppsScriptUrl).
+ * 3. Substitua todo o conteúdo do arquivo Código.gs por este código e Salve (Ctrl+S).
+ * 4. Execute a função "setupSpreadsheet" uma vez (ela cria os menus suspensos e migra colunas automaticamente).
+ * 5. Clique em "Implantar" > "Gerenciar implantações".
+ * 6. Clique no ícone de lápis (Editar) > Versão: "Nova versão" > Clique em "Implantar".
  */
 
 const CONFIG = {
@@ -34,13 +31,13 @@ const CONFIG = {
 };
 
 /**
- * Função de configuração inicial das abas e cabeçalhos.
- * Execute manualmente no editor do Apps Script ao instalar.
+ * Função de configuração inicial e migração das abas e cabeçalhos.
+ * Cria e configura os menus suspensos (validação de dados) e remove colunas redundantes.
  */
 function setupSpreadsheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   
-  // Cabeçalhos da Aba PEDIDOS
+  // Cabeçalhos Oficiais da Aba PEDIDOS (16 Colunas Unificadas)
   const headersPedidos = [
     "Código do pedido",
     "Data e hora do pedido",
@@ -56,12 +53,11 @@ function setupSpreadsheet() {
     "Valor calculado a pagar",
     "Forma de pagamento escolhida",
     "Status da inscrição",
-    "Status do pagamento",
     "Data e hora da confirmação do pagamento",
     "Observações administrativas"
   ];
 
-  // Cabeçalhos da Aba PARTICIPANTES
+  // Cabeçalhos Oficiais da Aba PARTICIPANTES (11 Colunas)
   const headersParticipantes = [
     "Código do pedido",
     "Nome completo",
@@ -79,6 +75,33 @@ function setupSpreadsheet() {
   let sheetPedidos = ss.getSheetByName(CONFIG.SHEET_PEDIDOS);
   if (!sheetPedidos) {
     sheetPedidos = ss.insertSheet(CONFIG.SHEET_PEDIDOS);
+  } else {
+    // Migração inteligente: se a coluna antiga "Status do pagamento" existir, remove para unificar com "Status da inscrição"
+    const lastCol = sheetPedidos.getLastColumn();
+    if (lastCol > 0) {
+      const currentHeaders = sheetPedidos.getRange(1, 1, 1, lastCol).getValues()[0];
+      const colStatusPagamento = currentHeaders.indexOf("Status do pagamento") + 1;
+      if (colStatusPagamento > 0) {
+        sheetPedidos.deleteColumn(colStatusPagamento);
+      }
+    }
+
+    // Se haviam registros com o texto legado "Aguardando confirmação", atualiza para "Aguardando pagamento"
+    const lastRow = sheetPedidos.getLastRow();
+    if (lastRow > 1) {
+      const statusRange = sheetPedidos.getRange(2, 14, lastRow - 1, 1);
+      const statusValues = statusRange.getValues();
+      let changed = false;
+      for (let r = 0; r < statusValues.length; r++) {
+        if (statusValues[r][0] === "Aguardando confirmação") {
+          statusValues[r][0] = "Aguardando pagamento";
+          changed = true;
+        }
+      }
+      if (changed) {
+        statusRange.setValues(statusValues);
+      }
+    }
   }
   formatHeaderRow(sheetPedidos, headersPedidos, "#1a4031");
 
@@ -88,20 +111,134 @@ function setupSpreadsheet() {
   }
   formatHeaderRow(sheetParticipantes, headersParticipantes, "#1a4031");
 
+  // Aplicar menus suspensos (Data Validation) nas colunas de seleção
+  applyDropdownValidations(sheetPedidos, sheetParticipantes);
+
   // Remover a "Página1" padrão se estiver vazia
   const defaultSheet = ss.getSheetByName("Página1") || ss.getSheetByName("Sheet1");
   if (defaultSheet && ss.getSheets().length > 2) {
     try { ss.deleteSheet(defaultSheet); } catch (e) {}
   }
 
-  Logger.log("Planilha configurada com sucesso com as abas PEDIDOS e PARTICIPANTES!");
+  Logger.log("Planilha configurada e atualizada com sucesso com Menus Suspensos e Abas formatadas!");
+}
+
+/**
+ * Cria regras de Menu Suspenso (Dropdowns) para facilitar o trabalho da equipe financeira
+ */
+function applyDropdownValidations(sheetPedidos, sheetParticipantes) {
+  const maxRowsPedidos = Math.max(sheetPedidos.getMaxRows() - 1, 500);
+
+  // 1. Menu Suspenso: Forma de pagamento (Aba PEDIDOS - Coluna 13)
+  const ruleForma = SpreadsheetApp.newDataValidation()
+    .requireValueInList(["Pix", "Cartão de Crédito", "Isenção"], true)
+    .setAllowInvalid(true)
+    .build();
+  sheetPedidos.getRange(2, 13, maxRowsPedidos, 1).setDataValidation(ruleForma);
+
+  // 2. Menu Suspenso: Status da inscrição (Aba PEDIDOS - Coluna 14)
+  const ruleStatusInscricao = SpreadsheetApp.newDataValidation()
+    .requireValueInList([
+      "Aguardando pagamento", 
+      "Pagamento confirmado", 
+      "Pendente de validação PcD", 
+      "Cancelado"
+    ], true)
+    .setAllowInvalid(true)
+    .build();
+  sheetPedidos.getRange(2, 14, maxRowsPedidos, 1).setDataValidation(ruleStatusInscricao);
+
+  if (sheetParticipantes) {
+    const maxRowsPart = Math.max(sheetParticipantes.getMaxRows() - 1, 500);
+
+    // 3. Menu Suspenso: Opção de transporte (Aba PARTICIPANTES - Coluna 6)
+    const ruleTransporte = SpreadsheetApp.newDataValidation()
+      .requireValueInList(["Ônibus da igreja", "Transporte próprio"], true)
+      .setAllowInvalid(true)
+      .build();
+    sheetParticipantes.getRange(2, 6, maxRowsPart, 1).setDataValidation(ruleTransporte);
+
+    // 4. Menu Suspenso: Solicitação de Isenção PcD (Aba PARTICIPANTES - Coluna 8)
+    const ruleSimNao = SpreadsheetApp.newDataValidation()
+      .requireValueInList(["Sim", "Não"], true)
+      .setAllowInvalid(true)
+      .build();
+    sheetParticipantes.getRange(2, 8, maxRowsPart, 1).setDataValidation(ruleSimNao);
+
+    // 5. Menu Suspenso: Status da isenção (Aba PARTICIPANTES - Coluna 9)
+    const ruleStatusIsencao = SpreadsheetApp.newDataValidation()
+      .requireValueInList([
+        "Não solicitada", 
+        "Pendente de validação", 
+        "Isenção aprovada", 
+        "Isenção recusada", 
+        "Isenção infantil automática"
+      ], true)
+      .setAllowInvalid(true)
+      .build();
+    sheetParticipantes.getRange(2, 9, maxRowsPart, 1).setDataValidation(ruleStatusIsencao);
+
+    // 6. Menu Suspenso: Status individual do pagamento (Aba PARTICIPANTES - Coluna 10)
+    const ruleStatusIndiv = SpreadsheetApp.newDataValidation()
+      .requireValueInList([
+        "Aguardando pagamento", 
+        "Pagamento confirmado", 
+        "Isento", 
+        "Cancelado"
+      ], true)
+      .setAllowInvalid(true)
+      .build();
+    sheetParticipantes.getRange(2, 10, maxRowsPart, 1).setDataValidation(ruleStatusIndiv);
+  }
+}
+
+/**
+ * Gatilho simples onEdit do Google Sheets:
+ * Quando o tesoureiro/equipe seleciona "Pagamento confirmado" no menu suspenso
+ * da coluna "Status da inscrição" (Coluna 14), carimba automaticamente a Data e Hora
+ * na coluna "Data e hora da confirmação do pagamento" (Coluna 15).
+ */
+function onEdit(e) {
+  if (!e || !e.range) return;
+  try {
+    const sheet = e.range.getSheet();
+    const sheetName = sheet.getName();
+    const row = e.range.getRow();
+    const col = e.range.getColumn();
+
+    // Apenas a partir da linha 2 (ignora cabeçalho)
+    if (row < 2) return;
+
+    if (sheetName === CONFIG.SHEET_PEDIDOS) {
+      // Coluna 14: Status da inscrição
+      if (col === 14) {
+        const val = String(e.value || e.range.getValue()).trim();
+        const cellDataHora = sheet.getRange(row, 15); // Coluna 15: Data e hora da confirmação
+
+        if (val === "Pagamento confirmado") {
+          if (!cellDataHora.getValue()) {
+            const nowStr = Utilities.formatDate(new Date(), CONFIG.TIMEZONE, "dd/MM/yyyy HH:mm:ss");
+            cellDataHora.setValue(nowStr);
+          }
+        } else if (val === "Aguardando pagamento" || val === "Cancelado") {
+          cellDataHora.clearContent();
+        }
+      }
+    }
+  } catch (err) {
+    // Ignorar eventuais falhas de contexto do gatilho
+  }
 }
 
 function formatHeaderRow(sheet, headers, bgColor) {
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(headers);
   } else {
-    // Atualiza linha 1
+    // Limpar cabeçalho excedente caso colunas tenham sido reduzidas
+    const lastCol = Math.max(sheet.getLastColumn(), headers.length);
+    if (lastCol > headers.length) {
+      sheet.getRange(1, headers.length + 1, 1, lastCol - headers.length).clear();
+    }
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
   
@@ -112,7 +249,7 @@ function formatHeaderRow(sheet, headers, bgColor) {
   headerRange.setHorizontalAlignment("center");
   sheet.setFrozenRows(1);
   
-  // Auto-ajuste de colunas
+  // Auto-ajuste de largura de colunas
   for (let c = 1; c <= headers.length; c++) {
     sheet.setColumnWidth(c, 180);
   }
@@ -136,7 +273,6 @@ function doGet(e) {
 function doPost(e) {
   const lock = LockService.getScriptLock();
   
-  // Aguarda até 30 segundos para evitar concorrência de escritas na planilha
   try {
     lock.waitLock(30000);
   } catch (err) {
@@ -184,11 +320,10 @@ function doPost(e) {
       sheetParticipantes = ss.getSheetByName(CONFIG.SHEET_PARTICIPANTES);
     }
 
-    // 4. Verificação de Idempotência: impede duplicação caso a requisição seja reenviada
+    // 4. Verificação de Idempotência
     const existingOrders = sheetPedidos.getRange(2, 1, Math.max(sheetPedidos.getLastRow() - 1, 1), 1).getValues();
     for (let i = 0; i < existingOrders.length; i++) {
       if (existingOrders[i][0] === orderId) {
-        // Pedido já foi gravado com sucesso anteriormente
         return createJsonResponse(true, "Pedido já registrado com sucesso.", {
           orderId: orderId,
           alreadyRecorded: true
@@ -196,7 +331,7 @@ function doPost(e) {
       }
     }
 
-    // 5. Data e Hora oficiais no fuso de Boa Vista (America/Boa_Vista)
+    // 5. Data e Hora oficiais no fuso de Boa Vista
     const now = new Date();
     const dataHoraFormatted = Utilities.formatDate(now, CONFIG.TIMEZONE, "dd/MM/yyyy HH:mm:ss");
 
@@ -264,7 +399,6 @@ function doPost(e) {
         if (pPcdSolicitada) {
           statusIsencao = "Pendente de validação";
           countPcdPendente++;
-          // Isenção PcD pendente NÃO é cobrada no total inicial
         } else {
           totalCents += valorUnitarioCents;
         }
@@ -282,7 +416,6 @@ function doPost(e) {
         if (pPcdSolicitada) {
           statusIsencao = "Pendente de validação";
           countPcdPendente++;
-          // Isenção PcD pendente NÃO é cobrada no total inicial
         } else {
           totalCents += valorUnitarioCents;
         }
@@ -317,7 +450,15 @@ function doPost(e) {
       observacoes.push("Contém participação por diária avulsa.");
     }
 
-    // 7. Montagem da linha de PEDIDO
+    // Status da Inscrição unificado
+    let statusInscricao = "Aguardando pagamento";
+    if (countPcdPendente > 0 && totalCents === 0) {
+      statusInscricao = "Pendente de validação PcD";
+    } else if (totalCents === 0 && countInfantil === participantes.length) {
+      statusInscricao = "Pagamento confirmado";
+    }
+
+    // 7. Montagem da linha de PEDIDO (16 Colunas Unificadas)
     const rowPedido = [
       orderId,
       dataHoraFormatted,
@@ -332,9 +473,8 @@ function doPost(e) {
       countProprio,
       totalFormatado,
       paymentMethod,
-      "Aguardando confirmação",
-      "Aguardando pagamento",
-      "", // Data confirmação do pagamento
+      statusInscricao,
+      statusInscricao === "Pagamento confirmado" ? dataHoraFormatted : "",
       observacoes.join(" | ")
     ];
 
@@ -358,18 +498,63 @@ function doPost(e) {
     });
 
   } catch (error) {
-    Logger.log("Erro ao processar inscrição: " + error.toString());
-    return createJsonResponse(false, "Erro interno ao salvar inscrição: " + error.toString(), null, 500);
+    Logger.log("Erro inesperado em doPost: " + error.toString());
+    return createJsonResponse(false, "Erro interno ao processar a inscrição: " + error.message, null, 500);
   } finally {
     lock.releaseLock();
   }
 }
 
-/**
- * Funções Auxiliares
- */
+function calculateAge(dateStr, refDate) {
+  if (!dateStr) return 0;
+  let day, month, year;
 
-function createJsonResponse(success, message, data, statusCode) {
+  if (dateStr.indexOf("-") > -1) {
+    const parts = dateStr.split("-");
+    year = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10) - 1;
+    day = parseInt(parts[2], 10);
+  } else if (dateStr.indexOf("/") > -1) {
+    const parts = dateStr.split("/");
+    day = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10) - 1;
+    year = parseInt(parts[2], 10);
+  } else {
+    return 0;
+  }
+
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return 0;
+
+  const birth = new Date(year, month, day);
+  let age = refDate.getFullYear() - birth.getFullYear();
+  const m = refDate.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && refDate.getDate() < birth.getDate())) {
+    age--;
+  }
+  return Math.max(0, age);
+}
+
+function formatDateBR(dateStr) {
+  if (!dateStr) return "";
+  if (dateStr.indexOf("/") > -1) return dateStr;
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    return parts[2] + "/" + parts[1] + "/" + parts[0];
+  }
+  return dateStr;
+}
+
+function formatCurrency(cents) {
+  const value = (cents / 100).toFixed(2).replace(".", ",");
+  return CONFIG.CURRENCY_SYMBOL + value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+function generateOrderId() {
+  const num = Math.floor(1000 + Math.random() * 9000);
+  return "#" + num;
+}
+
+function createJsonResponse(success, message, data, httpCode) {
   const output = {
     success: success,
     message: message,
@@ -377,49 +562,4 @@ function createJsonResponse(success, message, data, statusCode) {
   };
   return ContentService.createTextOutput(JSON.stringify(output))
     .setMimeType(ContentService.MimeType.JSON);
-}
-
-function calculateAge(birthDateStr, referenceDate) {
-  // birthDateStr pode ser YYYY-MM-DD ou DD/MM/YYYY
-  let day, month, year;
-  if (birthDateStr.indexOf("-") > -1) {
-    const parts = birthDateStr.split("-");
-    year = parseInt(parts[0], 10);
-    month = parseInt(parts[1], 10) - 1;
-    day = parseInt(parts[2], 10);
-  } else {
-    const parts = birthDateStr.split("/");
-    day = parseInt(parts[0], 10);
-    month = parseInt(parts[1], 10) - 1;
-    year = parseInt(parts[2], 10);
-  }
-
-  const birth = new Date(year, month, day);
-  const ref = referenceDate || new Date();
-  
-  let age = ref.getFullYear() - birth.getFullYear();
-  const m = ref.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && ref.getDate() < birth.getDate())) {
-    age--;
-  }
-  return Math.max(0, age);
-}
-
-function formatCurrency(cents) {
-  const reais = (cents / 100).toFixed(2).replace(".", ",");
-  return `${CONFIG.CURRENCY_SYMBOL}${reais}`;
-}
-
-function formatDateBR(dateStr) {
-  if (!dateStr) return "";
-  if (dateStr.indexOf("-") > -1) {
-    const parts = dateStr.split("-");
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
-  return dateStr;
-}
-
-function generateOrderId() {
-  const num = Math.floor(1000 + Math.random() * 9000);
-  return `#${num}`;
 }
