@@ -94,3 +94,22 @@ Este guia explica como ativar a integração oficial entre o site do retiro e a 
    - Assim que a operadora do cartão aprova o pagamento, a InfinitePay envia uma notificação automática (webhook) para o Google Apps Script.
    - O status do pedido na planilha muda automaticamente de `Aguardando pagamento` para **`Pagamento confirmado`**, preenchendo a data/hora da confirmação e o comprovante do recibo!
    - Se o participante precisar de ajuda, o botão de suporte via WhatsApp com o **Ir. Fillipe** continua disponível como canal de atendimento humanizado.
+
+---
+
+### Passo 8: Notificações Automáticas por E-mail para a Comissão (100% Gratuito)
+
+O script possui disparo automático de e-mails formatados via **Gmail / MailApp nativo** para os 3 e-mails da comissão:
+- `celestesantos6@gmail.com`
+- `juniormedeiros1989brito@gmail.com`
+- `fillipebitcoin@gmail.com`
+
+#### Eventos que disparam e-mail na hora:
+1. **Nova Inscrição Realizada:**
+   - Envia um e-mail com o código do pedido, nome e WhatsApp do responsável (link clicável), participantes, valor total, transporte e link direto para a planilha.
+2. **Comprovante Pix Anexado:**
+   - Envia um e-mail avisando que o inscrito enviou o comprovante, com botão para abrir o arquivo no Google Drive e conferir.
+3. **Pagamento Confirmado no Cartão:**
+   - Envia um e-mail avisando que a InfinitePay confirmou a transação no cartão de crédito.
+
+> **Importante ao atualizar a implantação:** Ao salvar o novo código no Apps Script e implantar a **Nova versão**, o Google pode solicitar uma rápida autorização para permitir o envio de e-mails em segundo plano pela conta do Google. Basta clicar em **Revisar permissões** > **Permitir**.

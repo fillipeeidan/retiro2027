@@ -339,6 +339,33 @@ def test_infinitepay_integration():
 
     assert_true("fillipeeidan" in readme, "Documentação da InfinitePay no README_SETUP.md presente")
 
+def test_email_notifications():
+    print("\n--- TESTE 10: Notificações Automáticas por E-mail para a Comissão ---")
+    gs_path = os.path.join(ROOT_DIR, "google-apps-script/Code.gs")
+    with open(gs_path, "r", encoding="utf-8") as f:
+        gs = f.read()
+
+    emails = [
+        "celestesantos6@gmail.com",
+        "juniormedeiros1989brito@gmail.com",
+        "fillipebitcoin@gmail.com"
+    ]
+    for email in emails:
+        assert_true(email in gs, f"E-mail {email} configurado em Code.gs")
+
+    assert_true("sendNotificationEmail" in gs, "Função sendNotificationEmail implementada em Code.gs")
+    assert_true("sendNewOrderEmail" in gs, "Função sendNewOrderEmail implementada em Code.gs")
+    assert_true("sendReceiptUploadedEmail" in gs, "Função sendReceiptUploadedEmail implementada em Code.gs")
+    assert_true("sendCardPaymentConfirmedEmail" in gs, "Função sendCardPaymentConfirmedEmail implementada em Code.gs")
+    assert_true("MailApp.sendEmail" in gs, "Chamada nativa MailApp.sendEmail presente em Code.gs")
+
+    readme_path = os.path.join(ROOT_DIR, "google-apps-script/README_SETUP.md")
+    with open(readme_path, "r", encoding="utf-8") as f:
+        readme = f.read()
+
+    for email in emails:
+        assert_true(email in readme, f"E-mail {email} documentado em README_SETUP.md")
+
 if __name__ == "__main__":
     try:
         test_file_structure()
@@ -350,6 +377,7 @@ if __name__ == "__main__":
         test_google_apps_script_integrity()
         test_transport_and_wizard_rules()
         test_infinitepay_integration()
+        test_email_notifications()
         print("\n>>> TODOS OS TESTES PASSARAM COM 100% DE SUCESSO! <<<")
     except Exception as e:
         print(f"\n[ERRO CRITICO] ERRO DURANTE A EXECUCAO DOS TESTES: {e}")

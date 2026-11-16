@@ -22,6 +22,11 @@ const CONFIG = {
   SHEET_PARTICIPANTES: "PARTICIPANTES",
   CURRENCY_SYMBOL: "R$ ",
   DRIVE_FOLDER_NAME: "Comprovantes — Retiro 2027",
+  NOTIFICATION_EMAILS: [
+    "celestesantos6@gmail.com",
+    "juniormedeiros1989brito@gmail.com",
+    "fillipebitcoin@gmail.com"
+  ],
   PRICING: {
     INTEIRA_CENTS: 15000,
     MEIA_CENTS: 7500,
@@ -502,6 +507,26 @@ function doPost(e) {
       range.setValues(rowsParticipantes);
     }
 
+    // Disparar notificação por e-mail para a comissão organizadora (não-bloqueante)
+    try {
+      sendNewOrderEmail({
+        orderId: orderId,
+        responsavel: responsavel,
+        participantes: participantes,
+        rowsParticipantes: rowsParticipantes,
+        totalFormatado: totalFormatado,
+        paymentMethod: paymentMethod,
+        statusInscricao: statusInscricao,
+        countOnibus: countOnibus,
+        countProprio: countProprio,
+        infinitePayUrl: payload.infinitePayUrl || "",
+        observacoes: observacoes.join(" | "),
+        dataHoraFormatted: dataHoraFormatted
+      }, ss.getUrl());
+    } catch (mailErr) {
+      Logger.log("Erro ao enviar e-mail de nova inscrição: " + mailErr.toString());
+    }
+
     return createJsonResponse(true, "Inscrição registrada com sucesso no Google Sheets!", {
       orderId: orderId,
       totalFormatted: totalFormatado,
@@ -629,6 +654,19 @@ function handleUploadComprovante(payload) {
       sheetPedidos.appendRow(rowAvulsa);
     }
 
+    // Disparar notificação por e-mail de comprovante anexado (não-bloqueante)
+    try {
+      const ssUrl = SpreadsheetApp.getActiveSpreadsheet().getUrl();
+      sendReceiptUploadedEmail({
+        orderId: orderId,
+        fileName: fileName,
+        fileUrl: fileUrl,
+        dataHoraFormatted: dataHoraFormatted
+      }, ssUrl);
+    } catch (mailErr) {
+      Logger.log("Erro ao enviar e-mail de comprovante: " + mailErr.toString());
+    }
+
     return createJsonResponse(true, "Comprovante anexado com sucesso!", {
       orderId: orderId,
       fileUrl: fileUrl,
@@ -731,6 +769,19 @@ function handleInfinitePayWebhook(payload) {
     }
 
     Logger.log("Webhook InfinitePay processado com sucesso para o pedido " + orderId);
+
+    // Disparar notificação por e-mail de confirmação no cartão (não-bloqueante)
+    try {
+      sendCardPaymentConfirmedEmail({
+        orderId: orderId,
+        transactionNsu: transactionNsu,
+        receiptUrl: receiptUrl,
+        confirmedAt: nowStr
+      }, ss.getUrl());
+    } catch (mailErr) {
+      Logger.log("Erro ao enviar e-mail de confirmação no cartão: " + mailErr.toString());
+    }
+
     return createJsonResponse(true, "Pagamento confirmado via InfinitePay com sucesso!", {
       orderId: orderId,
       transactionNsu: transactionNsu,
@@ -800,4 +851,233 @@ function createJsonResponse(success, message, data, httpCode) {
   };
   return ContentService.createTextOutput(JSON.stringify(output))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * ============================================================================
+ * MÓDULO DE NOTIFICAÇÕES AUTOMÁTICAS POR E-MAIL PARA A COMISSÃO
+ * ============================================================================
+ */
+
+function sendNotificationEmail(subject, htmlBody) {
+  try {
+    const recipients = (CONFIG.NOTIFICATION_EMAILS || []).filter(e => e && e.indexOf("@") > -1).join(",");
+    if (!recipients) return;
+
+    MailApp.sendEmail({
+      to: recipients,
+      subject: subject,
+      htmlBody: htmlBody
+    });
+  } catch (err) {
+    Logger.log("Erro ao enviar e-mail de notificação: " + err.toString());
+  }
+}
+
+function sendNewOrderEmail(data, ssUrl) {
+  const respWhatsClean = (data.responsavel.whatsapp || "").replace(/\D/g, "");
+  const whatsLink = respWhatsClean ? ("https://wa.me/55" + respWhatsClean.replace(/^55/, "")) : "#";
+
+  let rowsHtml = "";
+  for (let i = 0; i < (data.rowsParticipantes || []).length; i++) {
+    const row = data.rowsParticipantes[i];
+    const pNome = row[1];
+    const pIdade = row[3];
+    const pCategoria = row[4];
+    const pTransporte = row[5];
+    const pValor = row[6];
+
+    rowsHtml += 
+      '<tr style="border-bottom: 1px solid #e5e7eb;">' +
+        '<td style="padding: 10px 8px; font-weight: 600; color: #1f2937;">' + pNome + '</td>' +
+        '<td style="padding: 10px 8px; text-align: center; color: #4b5563;">' + pIdade + ' anos</td>' +
+        '<td style="padding: 10px 8px; color: #1a4031; font-weight: 500;">' + pCategoria + '</td>' +
+        '<td style="padding: 10px 8px; color: #4b5563;">' + pTransporte + '</td>' +
+        '<td style="padding: 10px 8px; text-align: right; font-weight: 600; color: #1a4031;">' + pValor + '</td>' +
+      '</tr>';
+  }
+
+  const subject = "[Retiro 2027] Nova Inscrição: " + data.orderId + " - " + data.responsavel.nome;
+
+  const html = 
+    '<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; max-width: 620px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">' +
+      '<div style="background: linear-gradient(135deg, #1a4031 0%, #245844 100%); padding: 24px 28px; text-align: center; color: #ffffff;">' +
+        '<span style="display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 20px; margin-bottom: 10px; color: #e1c340;">' +
+          'Nova Inscrição Recebida' +
+        '</span>' +
+        '<h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em;">Retiro 2027 — Conectados</h1>' +
+        '<p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.85;">Igreja Adventista da Promessa — Boa Vista</p>' +
+      '</div>' +
+
+      '<div style="padding: 24px 28px;">' +
+        '<div style="background-color: #f7faf8; border: 1px solid #d9e6de; border-radius: 8px; padding: 16px 20px; margin-bottom: 22px;">' +
+          '<table style="width: 100%; border-collapse: collapse; font-size: 14px;">' +
+            '<tr>' +
+              '<td style="padding: 4px 0; color: #6b7280; width: 140px;">Código do Pedido:</td>' +
+              '<td style="padding: 4px 0; font-weight: 700; color: #1a4031; font-size: 16px;">' + data.orderId + '</td>' +
+            '</tr>' +
+            '<tr>' +
+              '<td style="padding: 4px 0; color: #6b7280;">Responsável:</td>' +
+              '<td style="padding: 4px 0; font-weight: 600; color: #1f2937;">' + data.responsavel.nome + '</td>' +
+            '</tr>' +
+            '<tr>' +
+              '<td style="padding: 4px 0; color: #6b7280;">WhatsApp:</td>' +
+              '<td style="padding: 4px 0;">' +
+                '<a href="' + whatsLink + '" target="_blank" style="color: #128c7e; font-weight: 600; text-decoration: underline;">' +
+                  data.responsavel.whatsapp + ' (Conversar no WhatsApp)' +
+                '</a>' +
+              '</td>' +
+            '</tr>' +
+            '<tr>' +
+              '<td style="padding: 4px 0; color: #6b7280;">Forma de Pagamento:</td>' +
+              '<td style="padding: 4px 0; font-weight: 600; color: #1f2937;">' + data.paymentMethod + '</td>' +
+            '</tr>' +
+            '<tr>' +
+              '<td style="padding: 4px 0; color: #6b7280;">Valor Total:</td>' +
+              '<td style="padding: 4px 0; font-weight: 700; color: #1a4031; font-size: 16px;">' + data.totalFormatado + '</td>' +
+            '</tr>' +
+            '<tr>' +
+              '<td style="padding: 4px 0; color: #6b7280;">Status Inicial:</td>' +
+              '<td style="padding: 4px 0;">' +
+                '<span style="background-color: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 12px;">' +
+                  data.statusInscricao +
+                '</span>' +
+              '</td>' +
+            '</tr>' +
+            '<tr>' +
+              '<td style="padding: 4px 0; color: #6b7280;">Transporte:</td>' +
+              '<td style="padding: 4px 0; color: #374151;">' +
+                data.countOnibus + ' no ônibus da igreja · ' + data.countProprio + ' em transporte próprio' +
+              '</td>' +
+            '</tr>' +
+            (data.observacoes ? (
+              '<tr>' +
+                '<td style="padding: 4px 0; color: #6b7280;">Observações:</td>' +
+                '<td style="padding: 4px 0; color: #b45309; font-weight: 500;">' + data.observacoes + '</td>' +
+              '</tr>'
+            ) : '') +
+          '</table>' +
+        '</div>' +
+
+        '<h3 style="margin: 0 0 12px 0; font-size: 15px; color: #1a4031; text-transform: uppercase; letter-spacing: 0.05em;">' +
+          'Participantes Cadastrados (' + data.participantes.length + ')' +
+        '</h3>' +
+        '<table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 24px;">' +
+          '<thead>' +
+            '<tr style="background-color: #f3f4f6; color: #4b5563; font-size: 11px; text-transform: uppercase;">' +
+              '<th style="padding: 8px; text-align: left;">Nome</th>' +
+              '<th style="padding: 8px; text-align: center;">Idade</th>' +
+              '<th style="padding: 8px; text-align: left;">Categoria</th>' +
+              '<th style="padding: 8px; text-align: left;">Transporte</th>' +
+              '<th style="padding: 8px; text-align: right;">Valor</th>' +
+            '</tr>' +
+          '</thead>' +
+          '<tbody>' +
+            rowsHtml +
+          '</tbody>' +
+        '</table>' +
+
+        (data.infinitePayUrl ? (
+          '<div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; font-size: 13px; color: #166534;">' +
+            '<strong>Link InfinitePay gerado:</strong> ' +
+            '<a href="' + data.infinitePayUrl + '" target="_blank" style="color: #15803d; text-decoration: underline; word-break: break-all;">' +
+              data.infinitePayUrl +
+            '</a>' +
+          '</div>'
+        ) : '') +
+
+        '<div style="text-align: center; margin-top: 26px;">' +
+          '<a href="' + ssUrl + '" target="_blank" style="display: inline-block; background-color: #1a4031; color: #ffffff; font-weight: 600; font-size: 14px; text-decoration: none; padding: 12px 24px; border-radius: 6px;">' +
+            'Acessar Planilha no Google Sheets' +
+          '</a>' +
+        '</div>' +
+      '</div>' +
+
+      '<div style="background-color: #f9fafb; padding: 14px 28px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb;">' +
+        'Notificação automática da Comissão Organizadora do Retiro 2027 · ' + data.dataHoraFormatted +
+      '</div>' +
+    '</div>';
+
+  sendNotificationEmail(subject, html);
+}
+
+function sendReceiptUploadedEmail(data, ssUrl) {
+  const subject = "[Retiro 2027] Comprovante Pix Anexado: " + data.orderId;
+
+  const html = 
+    '<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">' +
+      '<div style="background: linear-gradient(135deg, #128c7e 0%, #075e54 100%); padding: 22px 24px; text-align: center; color: #ffffff;">' +
+        '<span style="display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; margin-bottom: 8px;">' +
+          'Comprovante Anexado' +
+        '</span>' +
+        '<h2 style="margin: 0; font-size: 22px; font-weight: 700;">Novo Comprovante Pix Recebido</h2>' +
+        '<p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Retiro 2027 — Conectados</p>' +
+      '</div>' +
+
+      '<div style="padding: 24px 28px;">' +
+        '<p style="font-size: 14px; color: #374151; line-height: 1.5; margin: 0 0 16px 0;">' +
+          'O participante acabou de anexar o comprovante de pagamento via Pix para o pedido <strong>' + data.orderId + '</strong>. O status na planilha foi atualizado para <strong>"Comprovante enviado"</strong>.' +
+        '</p>' +
+
+        '<div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 22px; text-align: center;">' +
+          '<a href="' + data.fileUrl + '" target="_blank" style="display: inline-block; background-color: #128c7e; color: #ffffff; font-weight: 700; font-size: 14px; text-decoration: none; padding: 12px 24px; border-radius: 6px; margin-bottom: 8px;">' +
+            '📄 Abrir Comprovante no Google Drive' +
+          '</a>' +
+          '<div style="font-size: 12px; color: #6b7280;">Arquivo: ' + data.fileName + '</div>' +
+        '</div>' +
+
+        '<div style="text-align: center;">' +
+          '<a href="' + ssUrl + '" target="_blank" style="display: inline-block; background-color: #1a4031; color: #ffffff; font-weight: 600; font-size: 13px; text-decoration: none; padding: 10px 20px; border-radius: 6px;">' +
+            'Abrir Planilha de Inscrições' +
+          '</a>' +
+        '</div>' +
+      '</div>' +
+
+      '<div style="background-color: #f9fafb; padding: 12px 24px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb;">' +
+        'Notificação automática de tesouraria · ' + data.dataHoraFormatted +
+      '</div>' +
+    '</div>';
+
+  sendNotificationEmail(subject, html);
+}
+
+function sendCardPaymentConfirmedEmail(data, ssUrl) {
+  const subject = "[Retiro 2027] Pagamento Confirmado no Cartão: " + data.orderId;
+
+  const html = 
+    '<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">' +
+      '<div style="background: linear-gradient(135deg, #1a4031 0%, #245844 100%); padding: 22px 24px; text-align: center; color: #ffffff;">' +
+        '<span style="display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; margin-bottom: 8px; color: #e1c340;">' +
+          'Pagamento Confirmado' +
+        '</span>' +
+        '<h2 style="margin: 0; font-size: 22px; font-weight: 700;">Cartão de Crédito Aprovado (InfinitePay)</h2>' +
+        '<p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Retiro 2027 — Conectados</p>' +
+      '</div>' +
+
+      '<div style="padding: 24px 28px;">' +
+        '<p style="font-size: 14px; color: #374151; line-height: 1.5; margin: 0 0 16px 0;">' +
+          'A operadora de cartão de crédito confirmou o pagamento da inscrição <strong>' + data.orderId + '</strong> via InfinitePay.' +
+        '</p>' +
+
+        '<div style="background-color: #f7faf8; border: 1px solid #d9e6de; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; font-size: 13px;">' +
+          '<div><strong>Código:</strong> ' + data.orderId + '</div>' +
+          '<div><strong>Data/Hora de Confirmação:</strong> ' + data.confirmedAt + '</div>' +
+          (data.transactionNsu ? ('<div><strong>NSU da Transação:</strong> ' + data.transactionNsu + '</div>') : '') +
+          (data.receiptUrl ? ('<div><strong>Recibo:</strong> <a href="' + data.receiptUrl + '" target="_blank" style="color: #128c7e;">Ver Recibo</a></div>') : '') +
+          '<div style="margin-top: 6px; color: #15803d; font-weight: 600;">Status na Planilha: Pagamento confirmado</div>' +
+        '</div>' +
+
+        '<div style="text-align: center;">' +
+          '<a href="' + ssUrl + '" target="_blank" style="display: inline-block; background-color: #1a4031; color: #ffffff; font-weight: 600; font-size: 13px; text-decoration: none; padding: 10px 20px; border-radius: 6px;">' +
+            'Abrir Planilha de Inscrições' +
+          '</a>' +
+        '</div>' +
+      '</div>' +
+
+      '<div style="background-color: #f9fafb; padding: 12px 24px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb;">' +
+        'Notificação automática InfinitePay · ' + data.confirmedAt +
+      '</div>' +
+    '</div>';
+
+  sendNotificationEmail(subject, html);
 }
