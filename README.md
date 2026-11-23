@@ -11,7 +11,7 @@ Landing page moderna, responsiva, acolhedora e sistema completo de inscrições 
 - **Data do Evento:** 6 a 9 de fevereiro de 2027
 - **Local:** Barão Branco Resort (a aproximadamente 15 km de Boa Vista, Roraima)
 - **Prazo de Encerramento das Inscrições:** 30 de janeiro de 2027 às 23:59:59 (Fuso oficial: `America/Boa_Vista`, UTC-4)
-- **Inclusões:** Alimentação e hospedagem incluídas na inscrição
+- **Inclusões:** Alimentação, espaço para acampamento (levar rede ou barraca) e transporte inclusos na inscrição
 
 ---
 

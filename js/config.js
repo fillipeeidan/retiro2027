@@ -14,7 +14,7 @@ const RETIRO_CONFIG = {
   locationDisplay: "Barão Branco Resort · a aproximadamente 15 km de Boa Vista, Roraima",
   resortName: "Barão Branco Resort",
   city: "Boa Vista, Roraima",
-  inclusions: "Alimentação e hospedagem incluídas na inscrição",
+  inclusions: "Alimentação, espaço para acampamento (levar rede ou barraca) e transporte inclusos",
 
   // Fuso horário oficial do evento
   timeZone: "America/Boa_Vista", // UTC-4 (sem horário de verão)

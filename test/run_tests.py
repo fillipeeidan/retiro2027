@@ -99,7 +99,7 @@ def test_html_official_texts():
 
     # 3. Informações
     assert_true("Tudo o que você precisa saber" in html, "Título da Seção 3 presente")
-    assert_true("Alimentação e hospedagem durante o retiro." in html, "Inclusões presentes")
+    assert_true("espaço para acampamento" in html, "Inclusões presentes (espaço para acampamento)")
 
     # 4. Valores
     assert_true("Escolha sua inscrição" in html, "Título da Seção 4 presente")
